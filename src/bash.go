@@ -203,7 +203,22 @@ function stack_index
     fi
 
     eval "echo "'$'"{_stack_$1[$2]}"
-    unset _i
+    return 0
+}
+
+function stack_set
+{
+ 	: ${1?'Missing stack name'}
+ 	: ${2?'Missing index'}
+ 	: ${3?'Missing value'}
+
+    if no_such_stack $1
+    then
+        echo "No such stack -- $1" >&2
+        return 1
+    fi
+
+    eval "_stack_$1[$2]=$3"
     return 0
 }
 
@@ -414,6 +429,8 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			}
 		case "INDEX":
 			return []byte(g.indt()+"local "+args[2][1:]+"=$(stack_index \""+args[0]+"_1\"_\""+args[0]+"_2\" "+args[1]+")\n"), nil
+		case "SET":
+			return []byte(g.indt()+"stack_set \""+args[0]+"_1\"_\""+args[0]+"_2\" "+args[1]+" "+args[2]+"\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+"local "+args[0][1:]+"=0 \n"), nil
@@ -479,6 +496,8 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			a, b := args[1], args[2]
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+a+" % "+b+" + ("+
 			b+"*(("+a+"<0)*("+b+">0) + ("+a+">0)*("+b+"<0)) )\")\n"), nil
+		case "POW":
+			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" ^ "+args[2]+"\")\n"), nil
 			
 		case "SLT":
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" < "+args[2]+"\")\n"), nil

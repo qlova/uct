@@ -50,14 +50,14 @@ function popstring()
 end
 
 function stdout()
-	text = popstring()
+	local text = popstring()
 	for i = 1, #text do
 		io.write(string.char(text[i]))	
 	end
 end
 
 function stdin()
-	length = pop()
+	local length = pop()
 	for i = 1, length do
 		push(string.byte(io.read(1)))
 	end
@@ -104,6 +104,13 @@ function slt(a, b)
 		return 1
 	end
 	return 0
+end
+
+function join(a,b)
+	local c = {}
+	table.foreach(a,function(i,v)table.insert(c,v)end)
+	table.foreach(b,function(i,v)table.insert(c,v)end)
+	return c
 end
 `)
 }
@@ -185,6 +192,8 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 			}
 		case "INDEX":
 			return []byte(g.indt()+args[2]+" = "+args[0]+"["+args[1]+"+1]\n"), nil
+		case "SET":
+			return []byte(g.indt()+args[0]+"["+args[1]+"+1] = "+args[2]+"\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+"local "+args[0]+" = 0 \n"), nil
@@ -222,7 +231,7 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 		case "STRINGDATA":
 			return []byte(g.indt()+args[0]+" = {"+args[1]+"} \n"), nil
 		case "JOIN":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" .. "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = join("+args[1]+","+args[2]+")\n"), nil
 		
 		//Maths.
 		case "ADD":
@@ -235,6 +244,8 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+args[0]+" = math.floor("+args[1]+" / "+args[2]+")\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
+		case "POW":
+			return []byte(g.indt()+args[0]+" = "+args[1]+" ^ "+args[2]+"\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil

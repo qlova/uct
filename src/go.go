@@ -135,6 +135,23 @@ func (z *AnyInt) Mod(a, b AnyInt) {
 	}
 } 
 
+func (z *AnyInt) Pow(a, b AnyInt) {
+	z.Int = big.NewInt(0)
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			z.Int.Exp(a.Int, big.NewInt(b.Small), nil)
+		} else if !cb {
+			z.Int.Exp(big.NewInt(a.Small), b.Int, nil)
+		} else {
+			z.Int = big.NewInt(0)
+			z.Int.Exp(big.NewInt(a.Small), big.NewInt(b.Small), nil)
+			return
+		}
+	} else {
+		z.Int.Exp(a.Int, b.Int, nil)
+	}
+} 
+
 func (z AnyInt) If() bool {
 	if z.Int == nil {
 		if z.Small != 0 {
@@ -390,7 +407,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			args[i] = newarg
 		}
 		switch arg {
-			case "byte":
+			case "byte", "len":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -423,6 +440,8 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			}
 		case "INDEX":
 			return []byte(g.indt()+args[2]+" := "+args[0]+"["+args[1]+".Int64()]\n"), nil
+		case "SET":
+			return []byte(g.indt()+args[0]+"["+args[1]+".Int64()] = "+args[2]+"\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+"var "+args[0]+" AnyInt \n"), nil
@@ -470,6 +489,8 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+args[0]+".Div("+args[1]+","+args[2]+")\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+".Mod("+args[1]+","+args[2]+")\n"), nil
+		case "POW":
+			return []byte(g.indt()+args[0]+".Pow("+args[1]+","+args[2]+")\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil

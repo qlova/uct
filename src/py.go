@@ -133,7 +133,7 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "byte":
+			case "byte", "len":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -165,6 +165,8 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 			}
 		case "INDEX":
 			return []byte(g.indt()+args[2]+" = "+args[0]+"["+args[1]+"]\n"), nil
+		case "SET":
+			return []byte(g.indt()+args[0]+"["+args[1]+"] = "+args[2]+";\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" = 0 \n"), nil
@@ -214,6 +216,8 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 			return []byte(g.indt()+args[0]+" = "+args[1]+" // "+args[2]+"\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
+		case "POW":
+			return []byte(g.indt()+args[0]+" = "+args[1]+" ** "+args[2]+"\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil

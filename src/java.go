@@ -49,6 +49,7 @@ public class `+g.FileName+` {
 			return List.remove(List.size()-1);
 		}
 		
+		
 		BigInteger size() {
 			return BigInteger.valueOf(List.size());
 		}
@@ -64,6 +65,10 @@ public class `+g.FileName+` {
 		
 		void push(BigInteger n) {
 			List.add(n);
+		}
+		
+		void set(BigInteger index, BigInteger n) {
+			List.set(index.intValue(), n);
 		}
 		
 		NString join(NString s) {
@@ -261,6 +266,8 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 			}
 		case "INDEX":
 			return []byte(g.indt()+"BigInteger "+args[2]+" = "+args[0]+".index("+args[1]+");\n"), nil
+		case "SET":
+			return []byte(g.indt()+args[0]+".set("+args[1]+", "+args[2]+");\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+"BigInteger "+args[0]+" = BigInteger.valueOf(0); \n"), nil
@@ -307,7 +314,7 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = "+args[1]+".divide("+args[2]+");\n"), nil
 		case "MOD":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".mod("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = "+args[1]+".pow("+args[2]+");\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil

@@ -71,6 +71,10 @@ public class `+g.FileName+` {
 			Value.Add(n);
 		}
 		
+		public void set(BigInteger index, BigInteger n) {
+			Value.Insert((int)index, n);
+		}
+		
 		public NString join(NString s) {
 			NString newList = new NString(); 
 			newList.Value.AddRange(Value);
@@ -267,6 +271,8 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			}
 		case "INDEX":
 			return []byte(g.indt()+"BigInteger "+args[2]+" = "+args[0]+".index("+args[1]+");\n"), nil
+		case "SET":
+			return []byte(g.indt()+args[0]+".set("+args[1]+", "+args[2]+");\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+"BigInteger "+args[0]+" = 0; \n"), nil
@@ -314,6 +320,8 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			return []byte(g.indt()+args[0]+" = "+args[1]+" / "+args[2]+";\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = (("+args[1]+"%"+args[2]+") + "+args[2]+") % "+args[2]+" ;\n"), nil
+		case "POW":
+			return []byte(g.indt()+args[0]+" = BigInteger.Pow("+args[1]+","+args[2]+");\n"), nil
 		
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil
