@@ -233,6 +233,8 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+"\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" / "+args[2]+"\n"), nil
+		case "MOD":
+			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil

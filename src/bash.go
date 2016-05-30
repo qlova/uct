@@ -475,6 +475,10 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" * "+args[2]+"\")\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" / "+args[2]+"\")\n"), nil
+		case "MOD":
+			a, b := args[1], args[2]
+			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+a+" % "+b+" + ("+
+			b+"*(("+a+"<0)*("+b+">0) + ("+a+">0)*("+b+"<0)) )\")\n"), nil
 			
 		case "SLT":
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" < "+args[2]+"\")\n"), nil

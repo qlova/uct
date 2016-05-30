@@ -118,6 +118,23 @@ func (z *AnyInt) Div(a, b AnyInt) {
 	}
 } 
 
+func (z *AnyInt) Mod(a, b AnyInt) {
+	z.Int = big.NewInt(0)
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			z.Int.Mod(a.Int, big.NewInt(b.Small))
+		} else if !cb {
+			z.Int.Mod(big.NewInt(a.Small), b.Int)
+		} else {
+			z.Int = big.NewInt(0)
+			z.Int.Mod(big.NewInt(a.Small), big.NewInt(b.Small))
+			return
+		}
+	} else {
+		z.Int.Mod(a.Int, b.Int)
+	}
+} 
+
 func (z AnyInt) If() bool {
 	if z.Int == nil {
 		if z.Small != 0 {
@@ -451,6 +468,8 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+args[0]+".Mul("+args[1]+","+args[2]+")\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0]+".Div("+args[1]+","+args[2]+")\n"), nil
+		case "MOD":
+			return []byte(g.indt()+args[0]+".Mod("+args[1]+","+args[2]+")\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil
