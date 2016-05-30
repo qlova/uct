@@ -1,0 +1,7 @@
+STRINGDATA helloworld "Hello World\n"
+
+# Prints "Hello World"
+ROUTINE
+	PUSHSTRING helloworld
+	STDOUT
+END
