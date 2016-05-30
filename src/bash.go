@@ -262,6 +262,8 @@ function stack_exists
 S=0
 stack_new N
 stack_new N2
+stack_new F
+
 
 function push {
 	stack_push N $1
@@ -279,6 +281,14 @@ function pushstring {
 function popstring {
 	stack_pop N2 $2
 	stack_pop N2 $1
+}
+
+function pushfunc {
+	stack_push F $1
+}
+
+function popfunc {
+	stack_pop F $1
 }
 
 function string {
@@ -417,6 +427,14 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 					return []byte(g.indt()+"stringpush "+args[1]+"_1 "+args[1]+"_2 "+args[0]+" \n"), nil
 				}
 			}
+		case "PUSHFUNC":
+			return []byte(g.indt()+"pushfunc "+args[0]+" \n"), nil
+		case "POPFUNC":
+			return []byte(g.indt()+"local "+args[0][1:]+"; popfunc "+args[0][1:]+" \n"), nil
+		case "FUNC":
+			return []byte(g.indt()+args[0][1:]+"='"+args[1][1:]+"' \n"), nil
+		case "EXE":
+			return []byte(g.indt()+"eval "+args[0]+"\n"), nil
 		case "POP", "POPSTRING":
 			if command == "POPSTRING" {
 				return []byte(g.indt()+"local "+args[0][1:]+"_1; local "+args[0][1:]+"_2; popstring "+args[0][1:]+"_1 "+args[0][1:]+"_2 \n"), nil

@@ -28,11 +28,29 @@ func (g *JavaAssembler) Header() []byte {
 	`
 import java.math.BigInteger;
 import java.util.ArrayList; 
-import java.io.IOException; 
+import java.io.IOException;
+import java.lang.reflect.*; 
 public class `+g.FileName+` {
 	
 	static NString N = new NString();
 	static NStringString N2 = new NStringString();
+	static Funcs F = new Funcs();
+	
+	static class Funcs {
+		ArrayList<Method> List;
+		
+		public void push(Method n) {
+			List.add(n);
+		}
+		
+		public Funcs() {
+			List = new ArrayList<Method>();
+		}
+		
+		public Method pop() {
+			return List.remove(List.size()-1);
+		}
+	}
 
 	static class NStringString {
 		ArrayList<NString> List;
@@ -104,6 +122,14 @@ public class `+g.FileName+` {
 	
 	static NString popstring() {
 		return N2.pop();
+	}
+	
+	static void pushfunc(Method n) {
+		F.push(n);
+	}
+	
+	static Method popfunc() {
+		return F.pop();
 	}
 
 	static void push(BigInteger n) {
@@ -242,22 +268,36 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"static void "+args[0]+"() {\n"), nil
-		case "PUSH", "PUSHSTRING":
+		case "FUNC":
+			return []byte(g.indt()+"Method "+args[0]+" = null; try { "+args[0]+" = " +
+				g.FileName+".class.getDeclaredMethod(\""+args[1]+
+				"\", (Class<?>[])null); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }\n"), nil
+		case "EXE":
+			return []byte(g.indt()+"try { "+args[0]+
+				".invoke(null); } catch (Exception e) {  throw new RuntimeException(e);}\n"), nil
+		case "PUSH", "PUSHSTRING", "PUSHFUNC":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
+			}
+			if command == "PUSHFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+");\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+");\n"), nil
 			}
-		case "POP", "POPSTRING":
+		case "POP", "POPSTRING", "POPFUNC":
 			var name string
 			var typ string = "BigInteger"
 			if command == "POPSTRING" {
 				name = "string"
 				typ  = "NString"
+			}
+			if command == "POPFUNC" {
+				name = "func"
+				typ  = "Method"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+typ+" "+args[0]+" = pop"+name+"();\n"), nil

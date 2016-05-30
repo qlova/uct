@@ -32,6 +32,7 @@ func (g *LuaAssembler) Header() []byte {
 	
 N = {}
 N2 = {}
+F = {}
 
 function push(n)
 	table.insert(N, n)
@@ -41,12 +42,20 @@ function pushstring(n)
 	table.insert(N2, n)
 end
 
+function pushfunc(n)
+	table.insert(F, n)
+end
+
 function pop()
 	return table.remove(N)
 end
 
 function popstring()
 	return table.remove(N2)
+end
+
+function popfunc()
+	return table.remove(F)
 end
 
 function stdout()
@@ -170,20 +179,26 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte("function "+args[0]+"()\n"), nil
-		case "PUSH", "PUSHSTRING":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
+			}
+			if command == "PUSHFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+"table.insert("+args[1]+","+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING":
+		case "POP", "POPSTRING", "POPFUNC":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
+			}
+			if command == "POPFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"local "+args[0]+" = pop"+name+"()\n"), nil
@@ -192,6 +207,10 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 			}
 		case "INDEX":
 			return []byte(g.indt()+args[2]+" = "+args[0]+"["+args[1]+"+1]\n"), nil
+		case "FUNC":
+			return []byte(g.indt()+args[0]+" = "+args[1]+" \n"), nil
+		case "EXE":
+			return []byte(g.indt()+args[0]+"() \n"), nil
 		case "SET":
 			return []byte(g.indt()+args[0]+"["+args[1]+"+1] = "+args[2]+"\n"), nil
 		case "VAR":

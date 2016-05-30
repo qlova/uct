@@ -30,11 +30,32 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Reflection;
 
 public class `+g.FileName+` {
 	
 	static NString N = new NString();
 	static NStringString N2 = new NStringString();
+	static Funcs F = new Funcs();
+
+	public class Funcs {
+		List<MethodInfo> Value;
+		
+		public void push(MethodInfo n) {
+			Value.Add(n);
+		}
+		
+		public Funcs() {
+			Value = new List<MethodInfo>();
+		}
+		
+		public MethodInfo pop() {
+			MethodInfo temp;
+			temp = Value[Value.Count-1];
+			Value.RemoveAt(Value.Count-1);
+			return temp;
+		}
+	}
 
 	public class NStringString {
 		List<NString> Value;
@@ -112,6 +133,15 @@ public class `+g.FileName+` {
 	static NString popstring() {
 		return N2.pop();
 	}
+	
+	static void pushfunc(MethodInfo n) {
+		F.push(n);
+	}
+	
+	static MethodInfo popfunc() {
+		return F.pop();
+	}
+
 
 	static void push(BigInteger n) {
 		N.push(n);
@@ -247,22 +277,34 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"static void "+args[0]+"() {\n"), nil
-		case "PUSH", "PUSHSTRING":
+		case "FUNC":
+			return []byte(g.indt()+"MethodInfo "+args[0]+
+				" = typeof(Functions).GetTypeInfo().GetDeclaredMethod(\""+args[1]+"\"); "), nil
+		case "EXE":
+			return []byte(g.indt()+args[0]+".Invoke(null, (Object[])null);"), nil
+		case "PUSH", "PUSHSTRING", "PUSHFUNC":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
+			}
+			if command == "PUSHFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+");\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+");\n"), nil
 			}
-		case "POP", "POPSTRING":
+		case "POP", "POPSTRING", "POPFUNC":
 			var name string
 			var typ string = "BigInteger"
 			if command == "POPSTRING" {
 				name = "string"
 				typ  = "NString"
+			}
+			if command == "POPFUNC" {
+				name = "func"
+				typ  = "MethodInfo"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+typ+" "+args[0]+" = pop"+name+"();\n"), nil

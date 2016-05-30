@@ -178,15 +178,30 @@ func BigInt(text string) AnyInt {
 
 type String []AnyInt
 type StringString [][]AnyInt
+type Funcs []func()
 
 var N String
 var N2 StringString
+
+var F Funcs
 
 func (s *String) push(n AnyInt) {
 	*s = append(*s, n)
 }
 
 func (p *String) pop() (n AnyInt) {
+	s := *p
+	n = s[len(s)-1]
+	s = s[:len(s)-1]
+	*p = s
+	return
+}
+
+func (s *Funcs) push(n func()) {
+	*s = append(*s, n)
+}
+
+func (p *Funcs) pop() (n func()) {
 	s := *p
 	n = s[len(s)-1]
 	s = s[:len(s)-1]
@@ -220,6 +235,14 @@ func push(n AnyInt) {
 	} else {
 		N.push(AnyInt{Int:big.NewInt(0).Set(n.Int)})
 	}
+}
+
+func popfunc() (n func()) {
+	return F.pop()
+}
+
+func pushfunc(n func()) {
+	F.push(n)
 }
 
 func pop() (n AnyInt) {
@@ -418,20 +441,28 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte("func "+args[0]+"() {\n"), nil
-		case "PUSH", "PUSHSTRING":
+		case "FUNC":
+			return []byte(g.indt()+args[0]+" := "+args[1]+" \n"), nil
+		case "EXE":
+			return []byte(g.indt()+args[0]+"() \n"), nil
+		case "PUSH", "PUSHSTRING", "PUSHFUNC":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
+			} else if command == "PUSHFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING":
+		case "POP", "POPSTRING", "POPFUNC":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
+			} else if command == "POPFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" := pop"+name+"()\n"), nil

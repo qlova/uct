@@ -32,6 +32,7 @@ func (g *RubyAssembler) Header() []byte {
 	
 N = []
 N2 = []
+F = []
 
 def push(n)
 	N << n
@@ -41,12 +42,20 @@ def pushstring(n)
 	N2 << n
 end
 
+def pushfunc(n)
+	F << n
+end
+
 def pop()
 	return N.pop
 end
 
 def popstring()
 	return N2.pop
+end
+
+def popfunc()
+	return F.pop
 end
 
 def stdout()
@@ -163,20 +172,26 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte("def "+args[0]+"()\n"), nil
-		case "PUSH", "PUSHSTRING":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
+			}
+			if command == "PUSHFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING":
+		case "POP", "POPSTRING", "POPFUNC":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
+			}
+			if command == "POPFUNC" {
+				name = "func"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" = pop"+name+"()\n"), nil
@@ -187,6 +202,12 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+args[2]+" = "+args[0]+"["+args[1]+"]\n"), nil
 		case "SET":
 			return []byte(g.indt()+args[0]+"["+args[1]+"] = "+args[2]+";\n"), nil
+			
+		case "FUNC":
+			return []byte(g.indt()+args[0]+" = method(:"+args[1]+") \n"), nil
+		case "EXE":
+			return []byte(g.indt()+args[0]+".call() \n"), nil
+			
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" = 0 \n"), nil
