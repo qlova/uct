@@ -28,13 +28,16 @@ func (g *JavaAssembler) Header() []byte {
 	`
 import java.math.BigInteger;
 import java.util.ArrayList; 
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.*; 
 public class `+g.FileName+` {
 	
 	static NString N = new NString();
 	static NStringString N2 = new NStringString();
 	static Funcs F = new Funcs();
+	static ITs F2 = new ITs();
+	
+	static BigInteger ERROR = BigInteger.valueOf(0);
 	
 	static class Funcs {
 		ArrayList<Method> List;
@@ -48,6 +51,28 @@ public class `+g.FileName+` {
 		}
 		
 		public Method pop() {
+			return List.remove(List.size()-1);
+		}
+	}
+	
+	static class IT {
+		String Name;
+		FileReader FileRead;
+		FileWriter FileWrite;
+	}
+	
+	static class ITs {
+		ArrayList<IT> List;
+		
+		public void push(IT n) {
+			List.add(n);
+		}
+		
+		public ITs() {
+			List = new ArrayList<IT>();
+		}
+		
+		public IT pop() {
 			return List.remove(List.size()-1);
 		}
 	}
@@ -120,9 +145,18 @@ public class `+g.FileName+` {
 		N2.push(n);
 	}
 	
+	static void pushit(IT n) {
+		F2.push(n);
+	}
+	
 	static NString popstring() {
 		return N2.pop();
 	}
+	
+	static IT popit() {
+		return F2.pop();
+	}
+	
 	
 	static void pushfunc(Method n) {
 		F.push(n);
@@ -138,6 +172,69 @@ public class `+g.FileName+` {
 	
 	static BigInteger pop() {
 		return N.pop();
+	}
+	
+	static IT open() {
+		String filename = "";
+		NString text = popstring();
+		for (int i = 0; i < text.size().intValue(); i++) {
+			if (text.index(BigInteger.valueOf(i)) != null) {
+				int c = text.index(BigInteger.valueOf(i)).intValue();
+				filename += (char)(c);
+			}
+		} 
+		
+		File file = new File(filename);
+		IT it = new IT();
+		it.Name = filename;
+		
+		if (file.exists()) {
+			push(BigInteger.valueOf(0));
+			try {
+				it.FileRead = new FileReader(file);
+				it.FileWrite = new FileWriter(file, true);
+			}catch(FileNotFoundException e){
+				
+			}catch(IOException e){
+			
+			}
+			return it;
+		}
+		push(BigInteger.valueOf(-1));
+		return it;
+	}
+	
+	static void in(IT file) {
+		BigInteger length = pop();
+		for (int i = 0; i < length.intValue(); i++) {
+			try {
+				push(BigInteger.valueOf(file.FileRead.read()));
+			}catch(IOException e){
+				push(BigInteger.valueOf(-1000));
+			}
+		}
+	}
+	
+	static void out(IT file) {
+		NString text = popstring();
+		for (int i = 0; i < text.size().intValue(); i++) {
+			if (text.index(BigInteger.valueOf(i)) != null) {
+				int c = text.index(BigInteger.valueOf(i)).intValue();
+				try {
+					file.FileWrite.write((char)(c));
+				}catch(IOException e){
+					push(BigInteger.valueOf(-1));
+				}
+			}
+		}
+	}
+	
+	static void close(IT file) {
+		try {
+			file.FileRead.close();
+			file.FileWrite.close();
+		}catch(IOException e){
+		}
 	}
 
 	static void stdout() {
@@ -257,7 +354,7 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 			args[i] = newarg
 		}
 		switch arg {
-			case "char", "byte":
+			case "char", "byte", "open":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -275,7 +372,7 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "EXE":
 			return []byte(g.indt()+"try { "+args[0]+
 				".invoke(null); } catch (Exception e) {  throw new RuntimeException(e);}\n"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
@@ -283,12 +380,15 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 			if command == "PUSHFUNC" {
 				name = "func"
 			}
+			if command == "PUSHIT" {
+				name = "it"
+			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+");\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+");\n"), nil
 			}
-		case "POP", "POPSTRING", "POPFUNC":
+		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
 			var typ string = "BigInteger"
 			if command == "POPSTRING" {
@@ -298,6 +398,10 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 			if command == "POPFUNC" {
 				name = "func"
 				typ  = "Method"
+			}
+			if command == "POPIT" {
+				name = "it"
+				typ  = "IT"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+typ+" "+args[0]+" = pop"+name+"();\n"), nil
@@ -314,6 +418,20 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 			} else {
 				return []byte(g.indt()+"BigInteger "+args[0]+" = "+args[1]+"; \n"), nil
 			}
+		
+		//IT stuff.
+		case "OPEN":
+			return []byte(g.indt()+"IT "+args[0]+" = open();\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"out("+args[0]+");\n"), nil
+		case "IN":
+			return []byte(g.indt()+"in("+args[0]+");\n"), nil
+		case "CLOSE":
+			return []byte(g.indt()+"close("+args[0]+");\n"), nil
+			
+		case "ERROR":
+			return []byte(g.indt()+"ERROR = "+args[0]+";\n"), nil	
+	
 		case "STRING":
 			return []byte(g.indt()+"NString "+args[0]+" = new NString();\n"), nil
 		case "STDOUT":

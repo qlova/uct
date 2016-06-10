@@ -179,17 +179,41 @@ func BigInt(text string) AnyInt {
 type String []AnyInt
 type StringString [][]AnyInt
 type Funcs []func()
+type ITs []IT
 
+type IT struct {
+	Name string
+	
+	File *os.File
+}
+
+//These are the number and string stacks.
 var N String
 var N2 StringString
 
+//These are the function and IT stacks.
 var F Funcs
+var F2 ITs
+
+var ERROR AnyInt
 
 func (s *String) push(n AnyInt) {
 	*s = append(*s, n)
 }
 
 func (p *String) pop() (n AnyInt) {
+	s := *p
+	n = s[len(s)-1]
+	s = s[:len(s)-1]
+	*p = s
+	return
+}
+
+func (p *ITs) push(n IT) {
+	*p = append(*p, n)
+}
+
+func (p *ITs)  pop() (n IT) {
 	s := *p
 	n = s[len(s)-1]
 	s = s[:len(s)-1]
@@ -245,8 +269,70 @@ func pushfunc(n func()) {
 	F.push(n)
 }
 
+func popit() (n IT) {
+	return F2.pop()
+}
+
+func pushit(n IT) {
+	F2.push(n)
+}
+
 func pop() (n AnyInt) {
 	return N.pop()
+}
+
+func open() (f IT) {
+	var err error
+
+	var filename string
+	text := popstring()
+	for _, v := range text {
+		filename += string(rune(v.Int64()))
+	}
+	
+	var it IT
+	it.Name = filename
+	it.File, err = os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0666)
+	if err == nil {
+		push(AnyInt{Int:big.NewInt(0)})
+		return it
+	}
+	if _, err = os.Stat(filename); err == nil {
+		push(AnyInt{Int:big.NewInt(0)})
+		return IT{}
+	}
+	push(AnyInt{Int:big.NewInt(-1)})
+	return IT{}
+}
+
+func out(f IT) {
+	var err error
+	if f.File == nil {
+		f.File, err = os.Create(f.Name)
+		if err != nil {
+			push(AnyInt{Int:big.NewInt(-1)})
+			return
+		}
+	}
+
+	text := popstring()
+	for _, v := range text {
+		if v.Int != nil {
+			_, err := f.File.Write(v.Bytes())
+			if err != nil {
+				push(AnyInt{Int:big.NewInt(-1)})
+				return
+			}
+		} else {
+			_, err := f.File.Write([]byte{byte(v.Small)})
+			if err != nil {
+				push(AnyInt{Int:big.NewInt(-1)})
+				return
+			}
+		}
+	} 
+	
+	push(AnyInt{Int:big.NewInt(0)})
 }
 
 func stdout() {
@@ -258,6 +344,37 @@ func stdout() {
 			os.Stdout.Write([]byte{byte(v.Small)})
 		}
 	} 
+}
+
+func in(f IT) {
+	
+	length := pop()
+	if f.File == nil {
+		push(AnyInt{Int:big.NewInt(-1000)})
+		return
+	}
+	var b []byte = make([]byte, 1)
+	if length.Int != nil {
+		for i := big.NewInt(0); i.Cmp(length.Int) < 0; i.Add(i, big.NewInt(1)) {	
+			var n int
+			n, _ = f.File.Read(b)
+			if n == 0 {
+				push(AnyInt{Int:big.NewInt(-1000)})
+				return
+			}
+			push(AnyInt{ Small:int64(b[0]) })
+		}
+	} else {
+		for i := int64(0); i < length.Small; i++ {	
+			var n int
+			n, _ = f.File.Read(b)
+			if n == 0 {
+				push(AnyInt{Int:big.NewInt(-1000)})
+				return
+			}
+			push(AnyInt{Small:int64(b[0])})
+		}
+	}
 }
 
 func stdin() {
@@ -279,6 +396,12 @@ func stdin() {
 			}
 			push(AnyInt{Small:int64(b[0])})
 		}
+	}
+}
+
+func close(f IT) {
+	if f.File != nil {
+		f.File.Close()
 	}
 }
 
@@ -430,7 +553,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			args[i] = newarg
 		}
 		switch arg {
-			case "byte", "len":
+			case "byte", "len", "open", "file", "close":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -445,24 +568,28 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+args[0]+" := "+args[1]+" \n"), nil
 		case "EXE":
 			return []byte(g.indt()+args[0]+"() \n"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
 			} else if command == "PUSHFUNC" {
 				name = "func"
+			} else if command == "PUSHIT" {
+				name = "it"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING", "POPFUNC":
+		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
 			} else if command == "POPFUNC" {
 				name = "func"
+			} else if command == "POPIT" {
+				name = "it"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" := pop"+name+"()\n"), nil
@@ -481,6 +608,20 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			}
 		case "STRING":
 			return []byte(g.indt()+"var "+args[0]+" String\n"), nil
+			
+		//IT stuff.
+		case "OPEN":
+			return []byte(g.indt()+"var "+args[0]+" IT = open()\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"out("+args[0]+")\n"), nil
+		case "IN":
+			return []byte(g.indt()+"in("+args[0]+")\n"), nil
+		case "CLOSE":
+			return []byte(g.indt()+"close("+args[0]+")\n"), nil
+		
+		case "ERROR":
+			return []byte(g.indt()+"ERROR="+args[0]+"\n"), nil
+			
 		case "STDOUT":
 			return []byte(g.indt()+"stdout()\n"), nil
 		case "STDIN":

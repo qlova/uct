@@ -316,6 +316,27 @@ function stringdata {
 	S=$(expr $S + 1)
 }
 
+function open {
+	popstring text_1 text_2
+	local filename;
+	
+	local len=$(stack_len "$text_1"_"$text_2")
+	local i
+	for ((i=0;i<=$len;i++)); do
+		local c=$(stack_index "$text_1"_"$text_2" $i)
+		filename="$filename$(printf \\$(printf '%03o\t' "$c"))"
+	done
+
+	 eval "declare -ig $1_i=0"
+	 eval 'declare -g $1_n="$filename"'
+	  
+	 if [ -e "$filename" ]; then
+	 	push "0"
+	 else
+	 	push "-1"
+	 fi
+}
+
 function stdout {
 	local text_1
 	local text_2
@@ -329,6 +350,39 @@ function stdout {
 	done
 }
 
+function out {
+	local text_1
+	local text_2
+	popstring text_1 text_2
+	
+	
+	local len=$(stack_len "$text_1"_"$text_2")
+	local i
+	for ((i=0;i<=$len;i++)); do
+		local c=$(stack_index "$text_1"_"$text_2" $i)
+		if [ "$c" = "10" ]; then
+			echo >> $(eval "echo -n \$$1_n")
+		else
+			echo -n $(printf \\$(printf '%03o\t' "$c")) >> $(eval "echo -n \$$1_n")
+		fi
+	done
+}
+
+function inn {
+	local len; pop len
+	
+	for ((i=0; i<=$len; i++)); do
+		local v=$(tail -c +$(eval "echo -n \$$1_i") $(eval "echo -n \$$1_n") | head -c 1)
+		if [ "$v" = "" ]; then
+			push -1000
+			return
+		else
+			push $(printf %d\\n \'"$v")
+		fi
+		declare $1_i=$(expr $(eval "echo -n \$$1_i") + 1)
+	done
+	
+}
 
 _stdi=0
 function stdin {
@@ -433,6 +487,17 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+"local "+args[0][1:]+"; popfunc "+args[0][1:]+" \n"), nil
 		case "FUNC":
 			return []byte(g.indt()+args[0][1:]+"='"+args[1][1:]+"' \n"), nil
+		
+		//File stuff.
+		case "OPEN":
+			return []byte(g.indt()+"open "+args[0][1:]+"\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"out "+args[0][1:]+"\n"), nil
+		case "IN":
+			return []byte(g.indt()+"inn "+args[0][1:]+"\n"), nil
+		case "CLOSE":
+			return []byte(""), nil
+			
 		case "EXE":
 			return []byte(g.indt()+"eval "+args[0]+"\n"), nil
 		case "POP", "POPSTRING":

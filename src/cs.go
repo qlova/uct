@@ -31,12 +31,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
+using System.IO;
 
 public class `+g.FileName+` {
 	
 	static NString N = new NString();
 	static NStringString N2 = new NStringString();
 	static Funcs F = new Funcs();
+	static ITs F2 = new ITs();
+	
+	static BigInteger ERROR = new BigInteger(0);
 
 	public class Funcs {
 		List<MethodInfo> Value;
@@ -51,6 +55,31 @@ public class `+g.FileName+` {
 		
 		public MethodInfo pop() {
 			MethodInfo temp;
+			temp = Value[Value.Count-1];
+			Value.RemoveAt(Value.Count-1);
+			return temp;
+		}
+	}
+	
+	public class IT {
+		public String Name;
+		public StreamReader FileRead;
+		public StreamWriter FileWrite;
+	}
+	
+	public class ITs {
+		List<IT> Value;
+		
+		public void push(IT n) {
+			Value.Add(n);
+		}
+		
+		public ITs() {
+			Value = new List<IT>();
+		}
+		
+		public IT pop() {
+			IT temp;
 			temp = Value[Value.Count-1];
 			Value.RemoveAt(Value.Count-1);
 			return temp;
@@ -130,8 +159,17 @@ public class `+g.FileName+` {
 		N2.push(n);
 	}
 	
+	static void pushit(IT n) {
+		F2.push(n);
+	}
+	
+	
 	static NString popstring() {
 		return N2.pop();
+	}
+	
+	static IT popit() {
+		return F2.pop();
 	}
 	
 	static void pushfunc(MethodInfo n) {
@@ -149,6 +187,63 @@ public class `+g.FileName+` {
 	
 	static BigInteger pop() {
 		return N.pop();
+	}
+	
+	static IT openit() {
+		String filename = "";
+		NString text = popstring();
+		for (int i = 0; i < (int)text.size(); i++) {
+			int c = (int)text.index(new BigInteger(i));
+			filename += (char)(c);
+		} 
+		
+		IT it = new IT();
+		it.Name = filename;
+		
+		if (File.Exists(filename)) {
+			push(new BigInteger(0));
+			try {
+				var oStream = new FileStream(filename, FileMode.Append, FileAccess.Write, FileShare.Read); 
+				var iStream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+				it.FileRead = new StreamReader(oStream);
+				it.FileWrite = new StreamWriter(iStream);
+			}catch(System.ArgumentException){
+			}
+			return it;
+		}
+		if (Directory.Exists(filename)) {
+			push(new BigInteger(0));
+			return it;
+		}
+		push(new BigInteger(-1));
+		return it;
+	}
+	
+	static void inn(IT file) {
+		BigInteger length = pop();
+		for (int i = 0; i < (int)length; i++) {
+			/*try {*/
+				push(new BigInteger(file.FileRead.Read()));
+			/*}catch(IOException e){
+				push(new BigInteger(-1));
+			}*/
+		}
+	}
+	
+	static void outy(IT file) {
+		NString text = popstring();
+		for (int i = 0; i < (int)text.size(); i++) {
+			int c = (int)text.index(new BigInteger(i));
+			file.FileWrite.Write((char)(c));
+		} 
+	}
+	
+	static void close(IT file) {
+		//try {
+			file.FileRead.Close();
+			file.FileWrite.Close();
+		//}catch(IOException e){
+		//}
 	}
 
 	static void stdout() {
@@ -266,7 +361,7 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			args[i] = newarg
 		}
 		switch arg {
-			case "char", "byte":
+			case "char", "byte", "in", "out":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -282,7 +377,7 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 				" = typeof(Functions).GetTypeInfo().GetDeclaredMethod(\""+args[1]+"\"); "), nil
 		case "EXE":
 			return []byte(g.indt()+args[0]+".Invoke(null, (Object[])null);"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
@@ -290,12 +385,15 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			if command == "PUSHFUNC" {
 				name = "func"
 			}
+			if command == "PUSHIT" {
+				name = "it"
+			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+");\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+");\n"), nil
 			}
-		case "POP", "POPSTRING", "POPFUNC":
+		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
 			var typ string = "BigInteger"
 			if command == "POPSTRING" {
@@ -305,6 +403,10 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			if command == "POPFUNC" {
 				name = "func"
 				typ  = "MethodInfo"
+			}
+			if command == "POPIT" {
+				name = "it"
+				typ  = "IT"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+typ+" "+args[0]+" = pop"+name+"();\n"), nil
@@ -321,6 +423,20 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			} else {
 				return []byte(g.indt()+"BigInteger "+args[0]+" = "+args[1]+"; \n"), nil
 			}
+		
+		//IT stuff.
+		case "OPEN":
+			return []byte(g.indt()+"IT "+args[0]+" = openit();\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"outy("+args[0]+");\n"), nil
+		case "IN":
+			return []byte(g.indt()+"inn("+args[0]+");\n"), nil
+		case "CLOSE":
+			return []byte(g.indt()+"close("+args[0]+");\n"), nil
+			
+		case "ERROR":
+			return []byte(g.indt()+"ERROR = "+args[0]+";\n"), nil	
+		
 		case "STRING":
 			return []byte(g.indt()+"NString "+args[0]+" = new NString();\n"), nil
 		case "STDOUT":

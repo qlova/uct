@@ -33,9 +33,16 @@ func (g *RubyAssembler) Header() []byte {
 N = []
 N2 = []
 F = []
+F2 = []
+
+$error = 0
 
 def push(n)
 	N << n
+end
+
+def pushit(n)
+	F2 << n
 end
 
 def pushstring(n)
@@ -50,12 +57,61 @@ def pop()
 	return N.pop
 end
 
+def popit()
+	return F2.pop
+end
+
 def popstring()
 	return N2.pop
 end
 
 def popfunc()
 	return F.pop
+end
+
+def openit()
+
+	filename = ""
+	text = popstring()
+	for i in 0..text.length-1
+		filename += text[i].chr
+	end
+
+	begin
+		file = File.open(filename, "a+")
+	rescue
+		if File.directory?(filename)
+			push(0)
+			return
+		end
+		push(-1)
+		return
+	end
+	push(0)
+	return file
+end
+
+def out(file)
+	text = popstring()
+	for i in 0..text.length-1
+		file.puts text[i].chr
+	end
+end
+
+def inn(file)
+	length = pop()
+	for i in 1..length
+		v = file.read(1)
+		if v == ""
+			push(-1000)
+			return
+		end
+		push(v.ord)
+	end
+end
+
+def close(file)
+	file.close
 end
 
 def stdout()
@@ -162,8 +218,10 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "byte", "end":
+			case "byte", "end", "open", "close":
 				args[i] = "u_"+args[i]
+			case "ERROR":
+				args[i] = "$error"
 		}
 	} 
 	switch command {
@@ -172,7 +230,7 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte("def "+args[0]+"()\n"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
@@ -180,18 +238,24 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 			if command == "PUSHFUNC" {
 				name = "func"
 			}
+			if command == "PUSHIT" {
+				name = "it"
+			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING", "POPFUNC":
+		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
 			}
 			if command == "POPFUNC" {
 				name = "func"
+			}
+			if command == "POPIT" {
+				name = "it"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" = pop"+name+"()\n"), nil
@@ -207,6 +271,19 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+args[0]+" = method(:"+args[1]+") \n"), nil
 		case "EXE":
 			return []byte(g.indt()+args[0]+".call() \n"), nil
+			
+		//IT stuff.
+		case "OPEN":
+			return []byte(g.indt()+""+args[0]+" = openit()\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"out("+args[0]+")\n"), nil
+		case "IN":
+			return []byte(g.indt()+"inn("+args[0]+")\n"), nil
+		case "CLOSE":
+			return []byte(g.indt()+"close("+args[0]+")\n"), nil
+		
+		case "ERROR":
+			return []byte(g.indt()+"$error ="+args[0]+"\n"), nil
 			
 		case "VAR":
 			if len(args) == 1 {

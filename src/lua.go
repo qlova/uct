@@ -33,9 +33,16 @@ func (g *LuaAssembler) Header() []byte {
 N = {}
 N2 = {}
 F = {}
+F2 = {}
+
+ERROR = 0
 
 function push(n)
 	table.insert(N, n)
+end
+
+function pushit(n)
+	table.insert(F2, n)
 end
 
 function pushstring(n)
@@ -50,6 +57,10 @@ function pop()
 	return table.remove(N)
 end
 
+function popit()
+	return table.remove(F2)
+end
+
 function popstring()
 	return table.remove(N2)
 end
@@ -58,17 +69,57 @@ function popfunc()
 	return table.remove(F)
 end
 
+function open()
+	local filename = ""
+	local text = popstring()
+	for i = 1, #text do
+		filename = filename..string.char(text[i])
+	end
+	
+	file = io.open(filename, "a+")
+	if file == nil then	
+		local _, _, code = os.rename(filename, filename)
+		if code == 2 then
+			push(-1)
+			return
+		end
+		push(0)
+		return file
+	else
+		push(0)
+		return file
+	end
+end
+
+function out(file)
+	local text = popstring()
+	for i = 1, #text do
+		out:write(string.char(text[i]))	
+	end
+end
+
+function inn(file)
+	local length = pop()
+	for i = 1, length do
+		push(string.byte(file:read(1)))
+	end
+end
+
+function close(file)
+	file:close()
+end
+
 function stdout()
 	local text = popstring()
 	for i = 1, #text do
-		io.write(string.char(text[i]))	
+		io.stdout:write(string.char(text[i]))	
 	end
 end
 
 function stdin()
 	local length = pop()
 	for i = 1, length do
-		push(string.byte(io.read(1)))
+		push(string.byte(io.stdin:read(1)))
 	end
 end
 		
@@ -169,7 +220,7 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "end":
+			case "end", "close", "open":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -179,7 +230,7 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte("function "+args[0]+"()\n"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
@@ -187,18 +238,24 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 			if command == "PUSHFUNC" {
 				name = "func"
 			}
+			if command == "PUSHIT" {
+				name = "it"
+			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+"table.insert("+args[1]+","+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING", "POPFUNC":
+		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
 			}
 			if command == "POPFUNC" {
 				name = "func"
+			}
+			if command == "POPIT" {
+				name = "it"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"local "+args[0]+" = pop"+name+"()\n"), nil
@@ -211,6 +268,20 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+args[0]+" = "+args[1]+" \n"), nil
 		case "EXE":
 			return []byte(g.indt()+args[0]+"() \n"), nil
+			
+		//IT stuff.
+		case "OPEN":
+			return []byte(g.indt()+""+args[0]+" = open()\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"out("+args[0]+")\n"), nil
+		case "IN":
+			return []byte(g.indt()+"inn("+args[0]+")\n"), nil
+		case "CLOSE":
+			return []byte(g.indt()+"close("+args[0]+")\n"), nil
+			
+		case "ERROR":
+			return []byte(g.indt()+"ERROR = "+args[0]+"\n"), nil
+		
 		case "SET":
 			return []byte(g.indt()+args[0]+"["+args[1]+"+1] = "+args[2]+"\n"), nil
 		case "VAR":

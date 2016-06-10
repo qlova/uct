@@ -30,13 +30,21 @@ func (g *PythonAssembler) Header() []byte {
 	return []byte(
 	`
 import sys
+import os
+
 	
 N = []
 N2 = []
 F = []
+F2 = []
+
+ERROR = 0
 
 def push(n):
 	N.append(n)
+	
+def pushit(n):
+	F2.append(n)
 
 def pushstring(n):
 	N2.append(n)
@@ -47,11 +55,49 @@ def pushfunc(n):
 def pop():
 	return N.pop()
 
+def popit():
+	return F2.pop()
+
 def popstring():
 	return N2.pop()
 	
 def popfunc():
 	return F.pop()
+
+def openit():
+	filename = ""
+	text = popstring()
+	for i in range(0, len(text)):
+		filename += chr(text[i])
+	
+	file = None
+	try:
+		file = open(filename)
+	except:
+		if os.path.isdir(filename):
+			push(0)
+		else:
+			push(-1)
+	else:
+		push(0)
+	return file
+
+def out(file):
+	text = popstring()
+	for i in range(0, len(text)):
+		file.write(chr(text[i]))
+
+def inn(file):
+	length = pop()
+	for i in range(0, length):
+		v = file.read(1)
+		if v == '':
+			push(-1000)
+			return
+		push(ord(v))
+
+def close(file):
+	file.close()
 
 def stdout():
 	text = popstring()
@@ -140,7 +186,7 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "byte", "len":
+			case "byte", "len", "open", "close":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -149,12 +195,12 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 			return []byte(""), nil
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte("def "+args[0]+"():\n"), nil
+			return []byte("def "+args[0]+"():\n"+g.indt(1)+"global ERROR\n"), nil
 		case "FUNC":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" \n"), nil
 		case "EXE":
 			return []byte(g.indt()+args[0]+"() \n"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC":
+		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
 				name = "string"
@@ -162,18 +208,24 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 			if command == "PUSHFUNC" {
 				name = "func"
 			}
+			if command == "PUSHIT" {
+				name = "it"
+			}
 			if len(args) == 1 {
 				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".append("+args[0]+")\n"), nil
 			}
-		case "POP", "POPSTRING", "POPFUNC":
+		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
 			if command == "POPSTRING" {
 				name = "string"
 			}
 			if command == "POPFUNC" {
 				name = "func"
+			}
+			if command == "POPIT" {
+				name = "it"
 			}
 			if len(args) == 1 {
 				return []byte(g.indt()+args[0]+" = pop"+name+"()\n"), nil
@@ -190,6 +242,20 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 			} else {
 				return []byte(g.indt()+args[0]+" = "+args[1]+" \n"), nil
 			}
+			
+		//IT stuff.
+		case "OPEN":
+			return []byte(g.indt()+""+args[0]+" = openit()\n"), nil
+		case "OUT":
+			return []byte(g.indt()+"out("+args[0]+")\n"), nil
+		case "IN":
+			return []byte(g.indt()+"inn("+args[0]+")\n"), nil
+		case "CLOSE":
+			return []byte(g.indt()+"close("+args[0]+")\n"), nil
+		
+		case "ERROR":
+			return []byte(g.indt()+"ERROR="+args[0]+"\n"), nil
+	
 		case "STRING":
 			return []byte(g.indt()+args[0]+" = [] \n"), nil
 		case "STDOUT":
