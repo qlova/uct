@@ -97,7 +97,8 @@ def inn(file):
 		push(ord(v))
 
 def close(file):
-	file.close()
+	if file != None:
+		file.close()
 
 def stdout():
 	text = popstring()
