@@ -299,23 +299,41 @@ func open() (f IT) {
 	}
 	if _, err = os.Stat(filename); err == nil {
 		push(AnyInt{Int:big.NewInt(0)})
-		return IT{}
+		return it
 	}
 	push(AnyInt{Int:big.NewInt(-1)})
-	return IT{}
+	return it
 }
 
 func out(f IT) {
 	var err error
+	
+	text := popstring()
+	
 	if f.File == nil {
-		f.File, err = os.Create(f.Name)
-		if err != nil {
-			push(AnyInt{Int:big.NewInt(-1)})
-			return
+		if f.Name[len(f.Name)-1] == '/' {
+			i, err := os.Stat(f.Name)
+			if err == nil && i.IsDir() {
+				
+			} else {
+				err := os.Mkdir(f.Name, 0666)
+				if err != nil {
+					push(AnyInt{Int:big.NewInt(-1)})
+					return
+				}
+			}
+		} else {
+			f.File, err = os.Create(f.Name)
+			if err != nil {
+				push(AnyInt{Int:big.NewInt(-1)})
+				return
+			}
 		}
 	}
-
-	text := popstring()
+	if len(text) == 0 {
+		push(AnyInt{Int:big.NewInt(0)})
+		return
+	}
 	for _, v := range text {
 		if v.Int != nil {
 			_, err := f.File.Write(v.Bytes())

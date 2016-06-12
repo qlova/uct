@@ -365,6 +365,24 @@ function out {
 	local text_2
 	popstring text_1 text_2
 	
+	local n=$(eval "echo -n \$$1_n")
+	if [ ${n: -1} = "/" ]; then
+		if [ ! -d $(eval "echo -n \$$1_n") ]; then
+			mkdir $(eval "echo -n \$$1_n") 2> /dev/null
+		fi
+		if [ "$?" = "1" ]; then
+			push -1
+			return
+		fi
+		push 0
+		return
+	elif [ ! -f $(eval "echo -n \$$1_n") ]; then
+		touch $(eval "echo -n \$$1_n") 2> /dev/null
+		if [ "$?" = "1" ]; then
+			push -1
+			return
+		fi
+	fi
 	
 	local len=$(stack_len "$text_1"_"$text_2")
 	local i
@@ -376,6 +394,7 @@ function out {
 			echo -n $(printf \\$(printf '%03o\t' "$c")) >> $(eval "echo -n \$$1_n")
 		fi
 	done
+	push 0
 }
 
 function inn {
@@ -507,9 +526,9 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "OPEN":
 			return []byte(g.indt()+"open "+args[0][1:]+"\n"), nil
 		case "OUT":
-			return []byte(g.indt()+"out "+args[0][1:]+"\n"), nil
+			return []byte(g.indt()+"out "+args[0]+"\n"), nil
 		case "IN":
-			return []byte(g.indt()+"inn "+args[0][1:]+"\n"), nil
+			return []byte(g.indt()+"inn "+args[0]+"\n"), nil
 		case "CLOSE":
 			return []byte(""), nil
 		

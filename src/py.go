@@ -70,9 +70,11 @@ def openit():
 	for i in range(0, len(text)):
 		filename += chr(text[i])
 	
-	file = None
+	file = [None]*2
+	file[0] = filename
+	file[1] = None
 	try:
-		file = open(filename)
+		file[1] = open(filename)
 	except:
 		if os.path.isdir(filename):
 			push(0)
@@ -83,9 +85,32 @@ def openit():
 	return file
 
 def out(file):
+	if file[1] == None:
+		if file[0][-1] == "/":
+			if not os.path.isdir(file[0]):
+				try:
+					os.mkdir(file[0])
+					push(0)
+				except:
+					push(-1)
+			else:
+				push(0)
+			return
+		else:
+			try:
+				file[1] = open(file[0], "w")
+			except:
+				push(-1)
+				return
+
 	text = popstring()
 	for i in range(0, len(text)):
-		file.write(chr(text[i]))
+		file[1].write(chr(text[i]))
+
+	if len(text) == 0:
+		file[1] = open(file[0], "w")	
+
+	push(0)
 
 def inn(file):
 	length = pop()
@@ -97,8 +122,8 @@ def inn(file):
 		push(ord(v))
 
 def close(file):
-	if file != None:
-		file.close()
+	if file[1] != None:
+		file[1].close()
 
 def stdout():
 	text = popstring()

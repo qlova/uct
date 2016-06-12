@@ -232,10 +232,41 @@ public class `+g.FileName+` {
 	
 	static void outy(IT file) {
 		NString text = popstring();
+		
+		if ((int)text.size() == 0 || file.FileWrite == null ) {
+			if (file.Name[file.Name.Length-1] == '/') {
+				if (Directory.Exists(file.Name)) {
+					
+				} else {
+					try {
+ 						Directory.CreateDirectory(file.Name);
+						push(new BigInteger(0));
+						return;
+					} catch {
+						push(new BigInteger(-1));
+						return;
+					}
+				}
+			} else if (File.Exists(file.Name)) {
+				
+			} else {
+				try {
+					File.Create(file.Name);
+					push(new BigInteger(0));
+					return;
+				} catch  {
+					push(new BigInteger(-1));
+					return;
+				}
+			}
+		}
+
+		
 		for (int i = 0; i < (int)text.size(); i++) {
 			int c = (int)text.index(new BigInteger(i));
 			file.FileWrite.Write((char)(c));
 		} 
+		push(new BigInteger(0));
 	}
 	
 	static void close(IT file) {

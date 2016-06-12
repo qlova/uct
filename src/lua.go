@@ -74,12 +74,14 @@ function open()
 		filename = filename..string.char(tonumber(tostring(text[i])))
 	end
 	
-	file = io.open(filename, "a+")
-	if file == nil then	
+	file = {}
+	file.name = filename
+	file.data = io.open(filename, "a+")
+	if file.data == nil then	
 		local _, _, code = os.rename(filename, filename)
 		if code == 2 then
 			push(bigint(-1))
-			return
+			return file
 		end
 		push(bigint(0))
 		return file
@@ -91,21 +93,46 @@ end
 
 function out(file)
 	local text = popstring()
-	for i = 1, #text do
-		out:write(string.char(tonumber(tostring(text[i]))))	
+	
+	if not file.data then
+		if file.name:sub(#file.name, #file.name) == "/" then
+			if io.open(file.name , "r" ) == nil then
+				local status = os.execute("mkdir "..file.name:gsub("/", package.config:sub(1,1)))
+				push(bigint(status))
+				return
+			else
+				push(bigint(0))
+				return
+			end
+		else
+			file.data = io.open(file.name, "w")
+		end
 	end
+	
+	if not file.data then
+		push(bigint(-1))
+		return
+	end
+	
+	for i = 1, #text do
+		if not file.data:write(string.char(tonumber(tostring(text[i])))) then
+			push(bigint(-1))
+			return
+		end
+	end
+	push(bigint(0))
 end
 
 function inn(file)
 	local length = pop()
 	for i = 1, tonumber(tostring(length)) do
-		push(bigint(string.byte(file:read(1))))
+		push(bigint(string.byte(file.data:read(1))))
 	end
 end
 
 function close(file)
-	if file then
-		file:close()
+	if file.data then
+		file.data:close()
 	end
 end
 

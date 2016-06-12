@@ -217,6 +217,39 @@ public class `+g.FileName+` {
 	
 	static void out(IT file) {
 		NString text = popstring();
+		
+		if (text.size().intValue() == 0 || file.FileWrite == null ) {
+			if (file.Name.charAt(file.Name.length()-1) == '/') {
+				if (new File(file.Name).exists()) {
+					
+				} else {
+					try {
+						File f = new File(file.Name);
+						if (!f.mkdir()) {
+							push(BigInteger.valueOf(-1));
+							return;
+						}
+						push(BigInteger.valueOf(0));
+						return;
+					} catch (Exception e) {
+						push(BigInteger.valueOf(-1));
+						return;
+					}
+				}
+			} else if (new File(file.Name).exists()) {
+				
+			} else {
+				try {
+					new File(file.Name).createNewFile();
+					push(BigInteger.valueOf(0));
+					return;
+				} catch (Exception e)  {
+					push(BigInteger.valueOf(-1));
+					return;
+				}
+			}
+		}
+		
 		for (int i = 0; i < text.size().intValue(); i++) {
 			if (text.index(BigInteger.valueOf(i)) != null) {
 				int c = text.index(BigInteger.valueOf(i)).intValue();
@@ -227,6 +260,7 @@ public class `+g.FileName+` {
 				}
 			}
 		}
+		push(BigInteger.valueOf(0));
 	}
 	
 	static void close(IT file) {

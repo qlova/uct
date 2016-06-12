@@ -76,16 +76,18 @@ def openit()
 	for i in 0..text.length-1
 		filename += text[i].chr
 	end
-
+	
+	file = [nil, nil]
+	file[0] = filename
 	begin
-		file = File.open(filename, "a+")
+		file[1] = File.open(filename, "a+")
 	rescue
 		if File.directory?(filename)
 			push(0)
-			return
+			return file
 		end
 		push(-1)
-		return
+		return file
 	end
 	push(0)
 	return file
@@ -93,15 +95,47 @@ end
 
 def out(file)
 	text = popstring()
-	for i in 0..text.length-1
-		file.puts text[i].chr
+	
+	if file[1] == nil
+		if file[0][file[0].length-1] == "/"
+			if File.directory?(file[0])
+			
+			else
+				begin
+					Dir.mkdir(file[0])
+				rescue
+					push(-1)
+					return 
+				end
+			end
+			push(0)
+			return
+		else
+			if File.file?(file[0])
+			
+			else
+				begin
+					file[1] = File.open(file[0], 'w')
+				rescue
+					push(-1)
+					return
+				end
+			end
+			push(0)
+			return
+		end
 	end
+	
+	for i in 0..text.length-1
+		file[1].puts text[i].chr
+	end
+	push(0)
 end
 
 def inn(file)
 	length = pop()
 	for i in 1..length
-		v = file.read(1)
+		v = file[1].read(1)
 		if v == ""
 			push(-1000)
 			return
@@ -111,8 +145,8 @@ def inn(file)
 end
 
 def close(file)
-	if file
-		file.close
+	if file[1]
+		file[1].close
 	end
 end
 
@@ -220,7 +254,7 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "byte", "end", "open", "close":
+			case "byte", "end", "open", "close", "self":
 				args[i] = "u_"+args[i]
 			case "ERROR":
 				args[i] = "$error"
