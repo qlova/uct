@@ -239,11 +239,11 @@ public class `+g.FileName+` {
 	}
 	
 	static void close(IT file) {
-		//try {
+		try {
 			file.FileRead.Close();
 			file.FileWrite.Close();
-		//}catch(IOException e){
-		//}
+		}catch{
+		}
 	}
 
 	static void stdout() {
@@ -479,7 +479,7 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = (("+args[1]+"%"+args[2]+") + "+args[2]+") % "+args[2]+" ;\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0]+" = BigInteger.Pow("+args[1]+","+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = BigInteger.Pow("+args[1]+",(int)"+args[2]+");\n"), nil
 		
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil

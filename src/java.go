@@ -234,6 +234,7 @@ public class `+g.FileName+` {
 			file.FileRead.close();
 			file.FileWrite.close();
 		}catch(IOException e){
+		}catch(NullPointerException e){
 		}
 	}
 
@@ -472,7 +473,9 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = "+args[1]+".divide("+args[2]+");\n"), nil
 		case "MOD":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".pow("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = "+args[1]+".mod("+args[2]+");\n"), nil
+		case "POW":
+			return []byte(g.indt()+args[0]+" = "+args[1]+".pow("+args[2]+".intValue());\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil

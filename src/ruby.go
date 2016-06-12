@@ -111,7 +111,9 @@ def inn(file)
 end
 
 def close(file)
-	file.close
+	if file
+		file.close
+	end
 end
 
 def stdout()

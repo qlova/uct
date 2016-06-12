@@ -263,10 +263,20 @@ S=0
 stack_new N
 stack_new N2
 stack_new F
+stack_new F2
 
+ERROR=0
 
 function push {
 	stack_push N $1
+}
+
+function pushit {
+	stack_push F2 $1
+}
+
+function popit {
+	stack_pop F2 $1
 }
 
 function pop {
@@ -420,6 +430,12 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 	//Format argument expressions.
 	//var expression bool
 	for i, arg := range args {
+		//RESERVED names in the language.
+		switch arg {
+			case "byte", "open":
+				args[i] = "u_"+args[i]
+				arg = "u_"+arg
+		}
 		if arg == "=" {
 			//expression = true
 			continue
@@ -458,11 +474,6 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			//println(newarg)
 			args[i] = newarg
 		}
-		//RESERVED names in the language.
-		switch arg {
-			case "byte":
-				args[i] = "u_"+args[i]
-		}
 	} 
 	switch command {
 		case "ROUTINE":
@@ -481,10 +492,14 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 					return []byte(g.indt()+"stringpush "+args[1]+"_1 "+args[1]+"_2 "+args[0]+" \n"), nil
 				}
 			}
+		case "PUSHIT":
+			return []byte(g.indt()+"pushit "+args[0][1:]+" \n"), nil
 		case "PUSHFUNC":
 			return []byte(g.indt()+"pushfunc "+args[0]+" \n"), nil
 		case "POPFUNC":
 			return []byte(g.indt()+"local "+args[0][1:]+"; popfunc "+args[0][1:]+" \n"), nil
+		case "POPIT":
+			return []byte(g.indt()+"local "+args[0][1:]+"; popit "+args[0][1:]+" \n"), nil
 		case "FUNC":
 			return []byte(g.indt()+args[0][1:]+"='"+args[1][1:]+"' \n"), nil
 		
@@ -497,6 +512,9 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+"inn "+args[0][1:]+"\n"), nil
 		case "CLOSE":
 			return []byte(""), nil
+		
+		case "ERROR":
+			return []byte(g.indt()+"ERROR="+args[0]+"\n"), nil
 			
 		case "EXE":
 			return []byte(g.indt()+"eval "+args[0]+"\n"), nil
