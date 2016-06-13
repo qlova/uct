@@ -326,6 +326,30 @@ function stringdata {
 	S=$(expr $S + 1)
 }
 
+function load {
+	popstring text_1 text_2
+	local name;
+	local result_1=result; local result_2=$S; string result
+	local variable=""
+	
+	local len=$(stack_len "$text_1"_"$text_2")
+	if [ "$len" -gt 1 ] && [ $(stack_index "$text_1"_"$text_2" 0) = 36 ]; then
+		local i
+		for ((i=1;i<=$len;i++)); do
+			local c=$(stack_index "$text_1"_"$text_2" $i)
+			name="$name$(printf \\$(printf '%03o\t' "$c"))"
+		done
+		
+		variable=$(eval echo -n "\$$name")
+	else
+		variable=$(eval echo -n "\$$(stack_index "$text_1"_"$text_2" 0)")
+	fi
+	for ((i=0;i<=${#variable};i++)); do
+		stringpush $result_1 $result_2 $(printf %d\\n \'"${variable:$i:1}")
+	done
+	pushstring $result_1 $result_2
+}
+
 function open {
 	popstring text_1 text_2
 	local filename;
@@ -439,6 +463,16 @@ function stdin {
 		read _stdb
 	done
 }
+
+function div {
+	local result=$(bc 2> /dev/null <<< "$1 / $2")
+	if [ -z "$result" ]; then
+		echo -n "0"
+		exit 1
+	else
+		echo -n "$result"
+	fi
+}
 `)
 }
 
@@ -451,7 +485,7 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 	for i, arg := range args {
 		//RESERVED names in the language.
 		switch arg {
-			case "byte", "open":
+			case "byte", "open", "load":
 				args[i] = "u_"+args[i]
 				arg = "u_"+arg
 		}
@@ -497,7 +531,7 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 	switch command {
 		case "ROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte("function main {\n"), nil
+			return []byte("function main {\ntrue\n"), nil
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte("function "+args[0][1:]+" {\n"), nil
@@ -559,10 +593,8 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			}
 		case "STRING":
 			return []byte(g.indt()+args[0][1:]+"_1="+args[0][1:]+"; "+args[0][1:]+"_2=$S; string "+args[0][1:]+" \n"), nil
-		case "STDOUT":
-			return []byte(g.indt()+"stdout\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin\n"), nil
+		case "STDOUT", "STDIN", "LOAD":
+			return []byte(g.indt()+strings.ToLower(command)+"\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while true; do\n"), nil
@@ -611,7 +643,7 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "MUL":
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" * "+args[2]+"\")\n"), nil
 		case "DIV":
-			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" / "+args[2]+"\")\n"), nil
+			return []byte(g.indt()+args[0][1:]+"=$(div \""+args[1]+"\" \""+args[2]+"\")\n"), nil
 		case "MOD":
 			a, b := args[1], args[2]
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+a+" % "+b+" + ("+

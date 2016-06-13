@@ -29,6 +29,7 @@ func (g *RubyAssembler) indt(n ...int) string {
 func (g *RubyAssembler) Header() []byte {
 	return []byte(
 	`
+require 'securerandom'
 	
 N = []
 N2 = []
@@ -68,6 +69,45 @@ end
 def popfunc()
 	return F.pop
 end
+
+def loadit() 
+	text = popstring()
+	result = []
+	name = ""
+	
+	variable = ""	
+	if text[0] == 36 and text.length > 0
+		for i in 1..text.length-1
+			name += text[i].chr
+		end
+
+		begin
+			variable = ENV[name]
+		rescue
+			pushstring(result)
+			return
+		end
+	else
+		begin
+			variable = ARGV[text[0]]
+		rescue
+			pushstring(result)
+			return
+		end
+	end
+	
+	if !variable
+		pushstring(result)
+		return
+	end
+	
+	
+	for c in variable.split("")
+		result << c.ord
+	end
+	pushstring(result)
+end
+
 
 def openit()
 
@@ -206,6 +246,17 @@ def slt(a, b)
 	end
 	return 0
 end
+
+def div(a, b)
+	begin
+		return a / b
+	rescue
+		if a == 0
+			return SecureRandom.random_number 255
+		end
+		return 0
+	end
+end
 `)
 }
 
@@ -329,10 +380,10 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 			}
 		case "STRING":
 			return []byte(g.indt()+args[0]+" = [] \n"), nil
-		case "STDOUT":
-			return []byte(g.indt()+"stdout()\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin()\n"), nil
+		case "STDOUT", "STDIN":
+			return []byte(g.indt()+strings.ToLower(command)+"()\n"), nil
+		case "LOAD":
+			return []byte(g.indt()+"loadit()\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while true do\n"), nil
@@ -368,7 +419,7 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "MUL":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+"\n"), nil
 		case "DIV":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" / "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = div("+args[1]+", "+args[2]+")\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
 		case "POW":

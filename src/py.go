@@ -31,7 +31,7 @@ func (g *PythonAssembler) Header() []byte {
 	`
 import sys
 import os
-
+import time
 	
 N = []
 N2 = []
@@ -63,6 +63,34 @@ def popstring():
 	
 def popfunc():
 	return F.pop()
+	
+def load():
+	text = popstring()
+	result = []
+	name = ""
+	
+	variable = ""	
+	if text[0] == 36 and len(text) > 0:
+		for i in range(1, len(text)):
+			name += chr(text[i])
+	
+		
+		try:
+			variable = os.environ[name]
+		except:
+			pushstring(result)
+			return
+	else:
+		try:
+			variable = sys.argv[text[0]]
+		except:
+			pushstring(result)
+			return
+	
+	for char in variable:
+		result.append(ord(char))
+	pushstring(result)
+	
 
 def openit():
 	filename = ""
@@ -164,6 +192,14 @@ def slt(a, b):
 	if a < b:
 		return 1
 	return 0
+
+def div(a, b):
+	try:
+		return a // b
+	except ZeroDivisionError:
+		if a == 0:
+			return ord(os.urandom(1))
+		return 0
 `)
 }
 
@@ -212,7 +248,7 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "byte", "len", "open", "close":
+			case "byte", "len", "open", "close", "load":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -284,10 +320,8 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 	
 		case "STRING":
 			return []byte(g.indt()+args[0]+" = [] \n"), nil
-		case "STDOUT":
-			return []byte(g.indt()+"stdout()\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin()\n"), nil
+		case "STDOUT", "STDIN", "LOAD":
+			return []byte(g.indt()+strings.ToLower(command)+"()\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while True:\n"), nil
@@ -322,7 +356,7 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 		case "MUL":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+"\n"), nil
 		case "DIV":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" // "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+")\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
 		case "POW":

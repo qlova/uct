@@ -241,6 +241,20 @@ CLOSE
 			END
 			CLOSE it
 		END
+
+LOAD
+====
+	Loads a string from the system.
+	
+	example:
+		
+		STRINGDATA home "$HOME"
+		
+		ROUTINE
+			PUSHSTRING home
+			LOAD
+			STDOUT
+		END
 			
 STDOUT
 ======

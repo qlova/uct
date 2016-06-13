@@ -32,6 +32,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using System.IO;
+using System.Security.Cryptography;
 
 public class `+g.FileName+` {
 	
@@ -39,6 +40,7 @@ public class `+g.FileName+` {
 	static NStringString N2 = new NStringString();
 	static Funcs F = new Funcs();
 	static ITs F2 = new ITs();
+	static String[] ARGS;
 	
 	static BigInteger ERROR = new BigInteger(0);
 
@@ -189,6 +191,38 @@ public class `+g.FileName+` {
 		return N.pop();
 	}
 	
+	static void load() {
+		String name = "";
+		String variable = "";
+		NString result = new NString();
+	
+		NString text = popstring();
+	
+		if ((int)text.index(0) == 36 && (int)text.size() > 1) {
+	
+			for (int i = 1; i < (int)text.size(); i++) {
+				int c = (int)text.index(new BigInteger(i));
+				name += (char)(c);
+			} 
+			
+			variable = Environment.GetEnvironmentVariable(name);
+		} else {
+			if (ARGS.Length > (int)text.index(0)) {
+				variable = ARGS[(int)text.index(0)];
+			} 
+		}
+		
+		if (variable == null) {
+			pushstring(result);
+			return;
+		}
+	
+		for (int i = 0; i < variable.Length; i++) {
+		    result.push(new BigInteger(variable[i]));
+		}
+		pushstring(result);
+	}
+	
 	static IT openit() {
 		String filename = "";
 		NString text = popstring();
@@ -337,6 +371,21 @@ public class `+g.FileName+` {
 		}
 		return new BigInteger(0);
 	}
+	
+	static BigInteger div(BigInteger a, BigInteger b) {
+		try {
+			return a/b;
+		} catch {
+			if (a.CompareTo(new BigInteger(0)) == 0) {
+				RandomNumberGenerator rng = RNGCryptoServiceProvider.Create();
+				 byte[] randomNumber = new byte[1];
+				 rng.GetBytes(randomNumber);
+				return new BigInteger((int)randomNumber[0]);
+			} else {
+				return new BigInteger(0);
+			}
+		}
+	}
 `)
 }
 
@@ -392,14 +441,14 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			args[i] = newarg
 		}
 		switch arg {
-			case "char", "byte", "in", "out":
+			case "char", "byte", "in", "out","load":
 				args[i] = "u_"+args[i]
 		}
 	} 
 	switch command {
 		case "ROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte(g.indt()+"public static void Main(String[] args) {\n"), nil
+			return []byte(g.indt()+"public static void Main(String[] args) {\nARGS=args;\n"), nil
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"static void "+args[0]+"() {\n"), nil
@@ -470,10 +519,8 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 		
 		case "STRING":
 			return []byte(g.indt()+"NString "+args[0]+" = new NString();\n"), nil
-		case "STDOUT":
-			return []byte(g.indt()+"stdout();\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin();\n"), nil
+		case "STDOUT", "STDIN", "LOAD":
+			return []byte(g.indt()+strings.ToLower(command)+"();\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while (true) {\n"), nil
@@ -506,7 +553,7 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 		case "MUL":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+";\n"), nil
 		case "DIV":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" / "+args[2]+";\n"), nil
+			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+");\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = (("+args[1]+"%"+args[2]+") + "+args[2]+") % "+args[2]+" ;\n"), nil
 		case "POW":

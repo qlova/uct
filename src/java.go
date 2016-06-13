@@ -29,13 +29,16 @@ func (g *JavaAssembler) Header() []byte {
 import java.math.BigInteger;
 import java.util.ArrayList; 
 import java.io.*;
-import java.lang.reflect.*; 
+import java.lang.reflect.*;
+import java.security.SecureRandom;
 public class `+g.FileName+` {
 	
 	static NString N = new NString();
 	static NStringString N2 = new NStringString();
 	static Funcs F = new Funcs();
 	static ITs F2 = new ITs();
+	
+	static String[] ARGS;
 	
 	static BigInteger ERROR = BigInteger.valueOf(0);
 	
@@ -173,6 +176,41 @@ public class `+g.FileName+` {
 	static BigInteger pop() {
 		return N.pop();
 	}
+	
+	static void load() {
+		String name = "";
+		String variable = "";
+		NString result = new NString();
+	
+		NString text = popstring();
+	
+		if (text.index(BigInteger.valueOf(0)).intValue() == 36 && text.size().intValue() > 1) {
+	
+			for (int i = 1; i < text.size().intValue(); i++) {
+				if (text.index(BigInteger.valueOf(i)) != null) {
+					int c = text.index(BigInteger.valueOf(i)).intValue();
+					name += (char)(c);
+				}
+			} 
+			
+			variable = System.getenv(name);
+		} else {
+			if (ARGS.length > text.index(BigInteger.valueOf(0)).intValue()) {
+				variable = ARGS[text.index(BigInteger.valueOf(0)).intValue()];
+			} 
+		}
+		
+		if (variable == null) {
+			pushstring(result);
+			return;
+		}
+	
+		for (int i = 0; i < variable.length(); i++) {
+		    result.push(BigInteger.valueOf(variable.charAt(i)));
+		}
+		pushstring(result);
+	}
+
 	
 	static IT open() {
 		String filename = "";
@@ -334,6 +372,19 @@ public class `+g.FileName+` {
 		}
 		return BigInteger.valueOf(0);
 	}
+	
+	static BigInteger div(BigInteger a, BigInteger b) {
+		try {
+			return a.divide(b);
+		} catch (Exception e) {
+			if (a.compareTo(BigInteger.valueOf(0)) == 0) {
+				SecureRandom srand = new SecureRandom();
+				return BigInteger.valueOf(srand.nextInt(255));
+			} else {
+				return BigInteger.valueOf(0);
+			}
+		}
+	}
 `)
 }
 
@@ -389,14 +440,14 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 			args[i] = newarg
 		}
 		switch arg {
-			case "char", "byte", "open":
+			case "char", "byte", "open", "load":
 				args[i] = "u_"+args[i]
 		}
 	} 
 	switch command {
 		case "ROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte(g.indt()+"public static void main(String[] args) {\n"), nil
+			return []byte(g.indt()+"public static void main(String[] args) {\nARGS=args;\n"), nil
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"static void "+args[0]+"() {\n"), nil
@@ -469,10 +520,8 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 	
 		case "STRING":
 			return []byte(g.indt()+"NString "+args[0]+" = new NString();\n"), nil
-		case "STDOUT":
-			return []byte(g.indt()+"stdout();\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin();\n"), nil
+		case "STDOUT", "STDIN", "LOAD":
+			return []byte(g.indt()+strings.ToLower(command)+"();\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while (true) {\n"), nil
@@ -505,7 +554,7 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "MUL":
 			return []byte(g.indt()+args[0]+" = "+args[1]+".multiply("+args[2]+");\n"), nil
 		case "DIV":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".divide("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+");\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+".mod("+args[2]+");\n"), nil
 		case "POW":

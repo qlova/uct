@@ -29,6 +29,7 @@ func (g *LuaAssembler) indt(n ...int) string {
 func (g *LuaAssembler) Header() []byte {
 	return []byte(
 	`
+math.randomseed(os.time())
 	
 N = {}
 N2 = {}
@@ -65,6 +66,32 @@ end
 
 function popfunc()
 	return table.remove(F)
+end
+
+function load() 
+	local text = popstring()
+	local result = {}
+	local name = ""
+	
+	local variable = ""	
+	if text[1] == bigint(36) and #text > 0 then
+		for i = 2, #text do
+			name = name..string.char(tonumber(tostring(text[i])))
+		end
+		
+		variable = os.getenv(name)
+	else
+		local a = arg[tonumber(tostring(text[0]))]
+		if a then
+			variable = a
+		end
+	end
+	
+	
+	for c in variable:gmatch"." do
+		table.insert(result, string.byte(c))
+	end
+	pushstring(result)
 end
 
 function open()
@@ -577,7 +604,11 @@ end
 local function div(numer, denom)
 	if type(denom) == "number" then
 		if denom == 0 then
-			error("divide by 0", 2)
+			if compare(numer, bigint(0)) == 0 then
+				return bigint(math.random())
+			else
+				return bigint(0)
+			end
 		end
 		return divint(numer, denom)
 	elseif type(numer) == "number" then
@@ -587,7 +618,11 @@ local function div(numer, denom)
 	local sign = 1
 	local cmp = compare(denom, bigint(0))
 	if cmp == 0 then
-		error("divide by 0", 2)
+		if compare(numer, bigint(0)) == 0 then
+			return bigint(math.random(255))
+		else
+			return bigint(0)
+		end
 	elseif cmp == -1 then
 		sign = -sign
 		denom = negate(denom)
@@ -792,7 +827,7 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 		}
 		//RESERVED names in the language.
 		switch arg {
-			case "end", "close", "open":
+			case "end", "close", "open", "load":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -864,10 +899,8 @@ func (g *LuaAssembler) Assemble(command string, args []string) ([]byte, error) {
 			}
 		case "STRING":
 			return []byte(g.indt()+args[0]+" = {} \n"), nil
-		case "STDOUT":
-			return []byte(g.indt()+"stdout()\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin()\n"), nil
+		case "STDOUT", "STDIN", "LOAD":
+			return []byte(g.indt()+strings.ToLower(command)+"()\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while true do\n"), nil

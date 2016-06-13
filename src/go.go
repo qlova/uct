@@ -29,6 +29,7 @@ package main
 import "math/big"
 import "os"
 import "fmt"
+import "crypto/rand"
 
 type AnyInt struct {
 	*big.Int
@@ -98,7 +99,20 @@ func (z *AnyInt) Mul(a, b AnyInt) {
 	}
 } 
 
+var Zero_go = big.NewInt(0)
+
 func (z *AnyInt) Div(a, b AnyInt) {
+	defer func() {
+        if r := recover(); r != nil {
+		    if a.Small == 0 || a.Int != nil && a.Int.Cmp(Zero_go) == 0 {
+		    	var b []byte = []byte{1}
+		    	rand.Read(b)
+		    	*z = AnyInt{Small:int64(b[0])}
+		    	return
+		    }
+		   	*z = AnyInt{Small:0}
+		}
+    }()
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
 		if !ca {
@@ -279,6 +293,34 @@ func pushit(n IT) {
 
 func pop() (n AnyInt) {
 	return N.pop()
+}
+
+func load() {
+	var name string
+	var variable string
+	var result String
+	
+	text := popstring()
+	
+	if text[0].Int64() == 36 && len(text) > 1 {
+	
+		for i, v := range text {
+			if i == 0 {
+				continue
+			}
+			name += string(rune(v.Int64()))
+		}
+		variable = os.Getenv(name)
+	} else {
+		if len(os.Args) > int(text[0].Int64()) {
+			variable = os.Args[text[0].Int64() ]
+		} 
+	}
+	
+	for _, v := range variable {
+		result = append(result, AnyInt{Small:int64(v)})
+	}
+	pushstring(result)
 }
 
 func open() (f IT) {
@@ -571,7 +613,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			args[i] = newarg
 		}
 		switch arg {
-			case "byte", "len", "open", "file", "close":
+			case "byte", "len", "open", "file", "close", "load":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -640,10 +682,9 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 		case "ERROR":
 			return []byte(g.indt()+"ERROR="+args[0]+"\n"), nil
 			
-		case "STDOUT":
-			return []byte(g.indt()+"stdout()\n"), nil
-		case "STDIN":
-			return []byte(g.indt()+"stdin()\n"), nil
+		case "STDOUT", "STDIN", "LOAD":
+			return []byte(g.indt()+strings.ToLower(command)+"()\n"), nil
+			
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"for {\n"), nil
