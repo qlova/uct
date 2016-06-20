@@ -173,7 +173,12 @@ end
 function stdin()
 	local length = pop()
 	for i = 1, tonumber(tostring(length)) do
-		push(bigint(string.byte(io.stdin:read(1))))
+		local txt = io.stdin:read(1)
+		if not txt then
+			push(bigint(-1000))
+			return
+		end
+		push(bigint(string.byte(txt)))
 	end
 end
 		
@@ -545,6 +550,9 @@ end
 local kthresh = 12
 
 local function mul(a, b)
+	if a == bigint(0) and b == bigint(0) then
+		return bigint(math.random()+1)
+	end
 	if type(a) == "number" then
 		return mulint(b, a)
 	elseif type(b) == "number" then
@@ -605,7 +613,7 @@ local function div(numer, denom)
 	if type(denom) == "number" then
 		if denom == 0 then
 			if compare(numer, bigint(0)) == 0 then
-				return bigint(math.random())
+				return bigint(math.random()+1)
 			else
 				return bigint(0)
 			end
@@ -697,6 +705,12 @@ local function mod(a, m)
 end
 
 local function pow(base, exponent)
+	if base == bigint(0) then
+		if exponent%2 ~= bigint(0) then
+			return bigint(math.random()+1)
+		end
+		return bigint(0)
+	end
 	local result = bigint(1)
   	while (exponent.comps[1] > 0) do
 		result = mul(result, base)

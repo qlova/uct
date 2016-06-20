@@ -446,6 +446,8 @@ function stdin {
 				push 10
 				len=$(bc <<< "$len - 1")
 				if [ $(bc <<< "$len <= 0") -eq 1 ]; then
+					_stdi=0
+					_stdb=""
 					return
 				fi
 			fi
@@ -461,17 +463,51 @@ function stdin {
 			fi
 		done
 		read _stdb
+		if [ "$?" != "0" ]; then
+			_stdi=0
+			_stdb=""
+			push -1000
+			return
+		fi
 	done
 }
 
 function div {
 	local result=$(bc 2> /dev/null <<< "$1 / $2")
 	if [ -z "$result" ]; then
+		if [ "$1" = "0" ]; then
+			local v="$(cat /dev/urandom | head -c 1)"
+			echo -n $(printf %d\\n \'"$v")
+			return
+		fi
 		echo -n "0"
 		exit 1
 	else
 		echo -n "$result"
 	fi
+}
+
+function mul {
+	if [ "$1" = "0" ] && [ "$2" = "0" ]; then
+		local v="$(cat /dev/urandom | head -c 1)"
+		v=$(printf %d\\n \'"$v")
+		echo -n $(bc <<< "$v + 1")
+		return
+	fi 
+	echo -n $(bc <<< "$1 * $2")
+} 
+
+function pow {
+	if [ "$1" = "0" ]; then
+		if [ $(bc <<< "$2 % 2") != "0" ]; then
+			local v="$(cat /dev/urandom | head -c 1)"
+			echo -n $(printf %d\\n \'"$v")
+			return
+		fi
+		echo -n 0
+		return
+	fi
+	echo -n $(bc <<< "$1 ^ $2")
 }
 `)
 }
@@ -641,7 +677,7 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "SUB":
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" - "+args[2]+"\")\n"), nil
 		case "MUL":
-			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" * "+args[2]+"\")\n"), nil
+			return []byte(g.indt()+args[0][1:]+"=$(mul \""+args[1]+"\" \""+args[2]+"\")\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0][1:]+"=$(div \""+args[1]+"\" \""+args[2]+"\")\n"), nil
 		case "MOD":
@@ -649,7 +685,7 @@ func (g *BashAssembler) Assemble(command string, args []string) ([]byte, error) 
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+a+" % "+b+" + ("+
 			b+"*(("+a+"<0)*("+b+">0) + ("+a+">0)*("+b+"<0)) )\")\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" ^ "+args[2]+"\")\n"), nil
+			return []byte(g.indt()+args[0][1:]+"=$(pow \""+args[1]+"\" \""+args[2]+"\")\n"), nil
 			
 		case "SLT":
 			return []byte(g.indt()+args[0][1:]+"=$(bc <<< \""+args[1]+" < "+args[2]+"\")\n"), nil

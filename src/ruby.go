@@ -17,6 +17,7 @@ type RubyAssembler struct {
 	Indentation int
 }
 
+var RubyData = make(map[string]bool)
 
 func (g *RubyAssembler) indt(n ...int) string {
 	if len(n) > 0 {
@@ -200,7 +201,12 @@ end
 def stdin()
 	length = pop()
 	for i in 1..length
-		push(STDIN.read(1).ord)
+		txt = STDIN.read(1)
+		if not txt
+			push(-1000)
+			return
+		end
+		push(txt.ord)
 	end
 end
 		
@@ -252,10 +258,27 @@ def div(a, b)
 		return a / b
 	rescue
 		if a == 0
-			return SecureRandom.random_number 255
+			return (SecureRandom.random_number 255) + 1
 		end
 		return 0
 	end
+end
+
+def mul(a, b)
+	if a == 0 and b == 0
+		return (SecureRandom.random_number 255) + 1
+	end
+	return a*b
+end
+
+def pow(a,b)
+	if a == 0
+		if b % 2 != 0
+			return (SecureRandom.random_number 255) + 1
+		end
+		return 0
+	end
+	return a**b
 end
 `)
 }
@@ -270,6 +293,9 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		if arg == "=" {
 			//expression = true
 			continue
+		}
+		if RubyData[arg] {
+			args[i] = "$"+arg
 		}
 		if _, err := strconv.Atoi(arg); err == nil {
 			args[i] = arg
@@ -407,7 +433,8 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "RETURN":
 			return []byte(g.indt()+"return\n"), nil
 		case "STRINGDATA":
-			return []byte(g.indt()+args[0]+" = ["+args[1]+"] \n"), nil
+			RubyData[args[0]] = true
+			return []byte(g.indt()+"$"+args[0]+" = ["+args[1]+"] \n"), nil
 		case "JOIN":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" + "+args[2]+"\n"), nil
 		
@@ -417,13 +444,13 @@ func (g *RubyAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "SUB":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" - "+args[2]+"\n"), nil
 		case "MUL":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = mul("+args[1]+", "+args[2]+")\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = div("+args[1]+", "+args[2]+")\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" ** "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = pow("+args[1]+", "+args[2]+")\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil

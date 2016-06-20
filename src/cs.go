@@ -322,11 +322,17 @@ public class `+g.FileName+` {
 	static void stdin() {
 		BigInteger length = pop();
 		for (int i = 0; i < (int)length; i++) {
-			/*try {*/
-				push(new BigInteger(Console.Read()));
-			/*}catch(IOException e){
-				push(new BigInteger(-1));
-			}*/
+			try {
+				int c = Console.Read();
+				if (c == -1) {
+					push(new BigInteger(-1000));
+					return;
+				}
+				push(new BigInteger(c));
+			} catch {
+				push(new BigInteger(-1000));
+				return;
+			}
 		}
 	}
 	
@@ -386,6 +392,29 @@ public class `+g.FileName+` {
 			}
 		}
 	}
+	
+	static BigInteger mul(BigInteger a, BigInteger b) {
+		if ((int)a == 0 && (int)b == 0) {
+			RandomNumberGenerator rng = RNGCryptoServiceProvider.Create();
+			 byte[] randomNumber = new byte[1];
+			 rng.GetBytes(randomNumber);
+			return new BigInteger((int)randomNumber[0]);
+		}
+		return a*b;
+	}
+	
+	static BigInteger pow(BigInteger a, BigInteger b) {
+		if ((int)a == 0) {
+			if ( (int)(b % (new BigInteger(2))) != 0) {
+				RandomNumberGenerator rng = RNGCryptoServiceProvider.Create();
+				 byte[] randomNumber = new byte[1];
+				 rng.GetBytes(randomNumber);
+				return new BigInteger((int)randomNumber[0]);
+			}
+			return new BigInteger(0);
+		}
+		return BigInteger.Pow(a, (int)b);
+	}
 `)
 }
 
@@ -441,7 +470,7 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 			args[i] = newarg
 		}
 		switch arg {
-			case "char", "byte", "in", "out","load":
+			case "char", "byte", "in", "out","load", "bool":
 				args[i] = "u_"+args[i]
 		}
 	} 
@@ -551,13 +580,13 @@ func (g *CSharpAssembler) Assemble(command string, args []string) ([]byte, error
 		case "SUB":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" - "+args[2]+";\n"), nil
 		case "MUL":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+";\n"), nil
+			return []byte(g.indt()+args[0]+" = mul("+args[1]+", "+args[2]+");\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+");\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = (("+args[1]+"%"+args[2]+") + "+args[2]+") % "+args[2]+" ;\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0]+" = BigInteger.Pow("+args[1]+",(int)"+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = pow("+args[1]+", "+args[2]+");\n"), nil
 		
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil

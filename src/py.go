@@ -161,7 +161,11 @@ def stdout():
 def stdin():
 	length = pop()
 	for i in range(0, length):
-		push(ord(sys.stdin.read(1)))
+		txt = sys.stdin.read(1)
+		if txt == "":
+			push(-1000)
+			return
+		push(ord(txt))
 		
 def seq(a, b):
 	if a == b:
@@ -198,8 +202,21 @@ def div(a, b):
 		return a // b
 	except ZeroDivisionError:
 		if a == 0:
-			return ord(os.urandom(1))
+			return ord(os.urandom(1))+1
 		return 0
+
+def mul(a, b):
+	if a == 0 and b == 0:
+		return ord(os.urandom(1))+1
+	return a*b
+
+def pow(a,b):
+	if a == 0:
+		if b % 2:
+			return ord(os.urandom(1))+1
+		return 0
+	return a**b	
+	
 `)
 }
 
@@ -354,13 +371,13 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 		case "SUB":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" - "+args[2]+"\n"), nil
 		case "MUL":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" * "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = mul("+args[1]+","+args[2]+")\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+")\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+" % "+args[2]+"\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0]+" = "+args[1]+" ** "+args[2]+"\n"), nil
+			return []byte(g.indt()+args[0]+" = pow("+args[1]+", "+args[2]+")\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil

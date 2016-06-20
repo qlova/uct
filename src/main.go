@@ -279,6 +279,12 @@ func assemble(filename string) error {
 				//output.Writeln("converted hex", token ,"value to", hex)
 				token = fmt.Sprint(hex)
 				tokens[i] = token
+			} else if len(token) > 2 && token[0] == '0' {
+				var binary uint
+				fmt.Sscanf(token[1:], "%b", &binary)
+				//output.Writeln("converted hex", token ,"value to", hex)
+				token = fmt.Sprint(binary)
+				tokens[i] = token
 			}
 			
 			//Blank aliases are ignored.

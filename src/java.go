@@ -324,9 +324,15 @@ public class `+g.FileName+` {
 		BigInteger length = pop();
 		for (int i = 0; i < length.intValue(); i++) {
 			try {
-				push(BigInteger.valueOf(System.in.read()));
+				int c = System.in.read();
+				if (c == -1) {
+					push(BigInteger.valueOf(-1000));
+					return;
+				}
+				push(BigInteger.valueOf(c));
 			}catch(IOException e){
-				push(BigInteger.valueOf(-1));
+				push(BigInteger.valueOf(-1000));
+				return;
 			}
 		}
 	}
@@ -379,11 +385,30 @@ public class `+g.FileName+` {
 		} catch (Exception e) {
 			if (a.compareTo(BigInteger.valueOf(0)) == 0) {
 				SecureRandom srand = new SecureRandom();
-				return BigInteger.valueOf(srand.nextInt(255));
+				return BigInteger.valueOf(srand.nextInt(255)+1);
 			} else {
 				return BigInteger.valueOf(0);
 			}
 		}
+	}
+	
+	static BigInteger mul(BigInteger a, BigInteger b) {
+		if (a.intValue() == 0 && b.intValue() == 0) {
+			SecureRandom srand = new SecureRandom();
+			return BigInteger.valueOf(srand.nextInt(255)+1); 
+		}
+		return a.multiply(b);
+	}
+	
+	static BigInteger pow(BigInteger a, BigInteger b) {
+		if (a.intValue() == 0) {
+			if (b.mod(BigInteger.valueOf(2)).intValue() != 0) {
+				SecureRandom srand = new SecureRandom();
+				return BigInteger.valueOf(srand.nextInt(255)+1);
+			}
+			return BigInteger.valueOf(0);
+		}
+		return a.pow(b.intValue());
 	}
 `)
 }
@@ -552,13 +577,13 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "SUB":
 			return []byte(g.indt()+args[0]+" = "+args[1]+".subtract("+args[2]+");\n"), nil
 		case "MUL":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".multiply("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = mul("+args[1]+", "+args[2]+");\n"), nil
 		case "DIV":
 			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+");\n"), nil
 		case "MOD":
 			return []byte(g.indt()+args[0]+" = "+args[1]+".mod("+args[2]+");\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".pow("+args[2]+".intValue());\n"), nil
+			return []byte(g.indt()+args[0]+" = pow("+args[1]+", "+args[2]+");\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
 			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil

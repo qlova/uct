@@ -28,6 +28,7 @@ package main
 
 import "math/big"
 import "os"
+import "io"
 import "fmt"
 import "crypto/rand"
 
@@ -81,6 +82,13 @@ func (z *AnyInt) Sub(a, b AnyInt) {
 } 
 
 func (z *AnyInt) Mul(a, b AnyInt) {
+	if a.Int64() == 0 && b.Int64() == 0 {
+		var b []byte = []byte{1}
+    	rand.Read(b)
+    	*z = AnyInt{Small:int64(b[0]+1)}
+    	return
+	}
+	
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
 		if !ca {
@@ -107,7 +115,7 @@ func (z *AnyInt) Div(a, b AnyInt) {
 		    if a.Small == 0 || a.Int != nil && a.Int.Cmp(Zero_go) == 0 {
 		    	var b []byte = []byte{1}
 		    	rand.Read(b)
-		    	*z = AnyInt{Small:int64(b[0])}
+		    	*z = AnyInt{Small:int64(b[0]+1)}
 		    	return
 		    }
 		   	*z = AnyInt{Small:0}
@@ -150,6 +158,18 @@ func (z *AnyInt) Mod(a, b AnyInt) {
 } 
 
 func (z *AnyInt) Pow(a, b AnyInt) {
+	if a.Int64() == 0 {
+		z.Mod(b, AnyInt{Small: 2})
+		if z.Int64() != 0 {
+			var b []byte = []byte{1}
+	    	rand.Read(b)
+	    	*z = AnyInt{Small:int64(b[0])}
+	    	return
+		}
+		z.Int = big.NewInt(0)
+		return
+	}
+
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
 		if !ca {
@@ -440,11 +460,16 @@ func in(f IT) {
 func stdin() {
 	length := pop()
 	var b []byte = make([]byte, 1)
+	var err error
 	if length.Int != nil {
 		for i := big.NewInt(0); i.Cmp(length.Int) < 0; i.Add(i, big.NewInt(1)) {	
 			var n int
 			for n == 0 {
-				n, _ = os.Stdin.Read(b)
+				n, err = os.Stdin.Read(b)
+				if err == io.EOF {
+					push(AnyInt{ Small:-1000})
+					return
+				}
 			}
 			push(AnyInt{ Small:int64(b[0]) })
 		}
@@ -452,7 +477,11 @@ func stdin() {
 		for i := int64(0); i < length.Small; i++ {	
 			var n int
 			for n == 0 {
-				n, _ = os.Stdin.Read(b)
+				n, err = os.Stdin.Read(b)
+				if err == io.EOF {
+					push(AnyInt{ Small:-1000})
+					return
+				}
 			}
 			push(AnyInt{Small:int64(b[0])})
 		}
@@ -613,7 +642,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			args[i] = newarg
 		}
 		switch arg {
-			case "byte", "len", "open", "file", "close", "load":
+			case "byte", "len", "open", "file", "close", "load", "bool":
 				args[i] = "u_"+args[i]
 		}
 	} 
