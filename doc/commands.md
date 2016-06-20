@@ -297,19 +297,16 @@ LOOP, REPEAT, BREAK
 			REPEAT
 		END
 
-IF
+IF, ELSE
 ==
-	If will branch to end if equal to 0
+	If will branch to else or end if equal to 0
 	
 	example:
 		
 		ROUTINE
 			VAR a
-			VAR b 1
 			IF a
 				#This will not run.
-			ELSEIF b
-				#This will run.
 			ELSE
 				#This will not run.
 			END
