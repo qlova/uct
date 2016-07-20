@@ -16,6 +16,7 @@ func init() {
 type JavaAssembler struct {
 	Indentation int
 	FileName string
+	Main bool
 }
 
 func (g *JavaAssembler) SetFileName(s string) {
@@ -31,12 +32,80 @@ import java.util.ArrayList;
 import java.io.*;
 import java.lang.reflect.*;
 import java.security.SecureRandom;
+
+//This is for threading.
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
 public class `+g.FileName+` {
+	static Executor pool__java = Executors.newCachedThreadPool();
+
+	static class Stack {
+		NString N;
+		NStringString N2;
+		Funcs F;
+		ITs F2;
+		
+		public Stack() {
+			N = new NString();
+			N2 = new NStringString();
+			F = new Funcs();
+			F2 = new ITs();
+		}
+		
+		void pushstring(NString n) {
+			N2.push(n);
+		}
 	
-	static NString N = new NString();
-	static NStringString N2 = new NStringString();
-	static Funcs F = new Funcs();
-	static ITs F2 = new ITs();
+		void pushit(IT n) {
+			F2.push(n);
+		}
+	
+		NString popstring() {
+			return N2.pop();
+		}
+	
+		IT popit() {
+			return F2.pop();
+		}
+	
+	
+		void pushfunc(Method n) {
+			F.push(n);
+		}
+	
+		Method popfunc() {
+			return F.pop();
+		}
+
+		void push(BigInteger n) {
+			N.push(n);
+		}
+	
+		BigInteger pop() {
+			return N.pop();
+		}
+		
+		public Stack copy() {
+			Stack n = new Stack();
+			n.N = new NString();
+			
+			n.N.List = new ArrayList<BigInteger>(N.List);
+
+			n.N2.List = new ArrayList<NString>(N2.List.size());
+			for (int i = 0; i < N2.List.size(); i++) {
+				n.N2.List.set(i, new NString());
+				n.N2.List.get(i).List = new ArrayList<>(N2.List.get(i).List);
+			}
+			
+			n.F = new Funcs();
+			n.F.List = new ArrayList<>(F.List);
+			
+			n.F2 = new ITs();
+			n.F2.List = new ArrayList<>(F2.List);
+			return n;
+		}
+	}
 	
 	static String[] ARGS;
 	
@@ -144,45 +213,12 @@ public class `+g.FileName+` {
 		}
 	}
 	
-	static void pushstring(NString n) {
-		N2.push(n);
-	}
-	
-	static void pushit(IT n) {
-		F2.push(n);
-	}
-	
-	static NString popstring() {
-		return N2.pop();
-	}
-	
-	static IT popit() {
-		return F2.pop();
-	}
-	
-	
-	static void pushfunc(Method n) {
-		F.push(n);
-	}
-	
-	static Method popfunc() {
-		return F.pop();
-	}
-
-	static void push(BigInteger n) {
-		N.push(n);
-	}
-	
-	static BigInteger pop() {
-		return N.pop();
-	}
-	
-	static void load() {
+	static void load(Stack s) {
 		String name = "";
 		String variable = "";
 		NString result = new NString();
 	
-		NString text = popstring();
+		NString text = s.popstring();
 	
 		if (text.index(BigInteger.valueOf(0)).intValue() == 36 && text.size().intValue() > 1) {
 	
@@ -201,20 +237,20 @@ public class `+g.FileName+` {
 		}
 		
 		if (variable == null) {
-			pushstring(result);
+			s.pushstring(result);
 			return;
 		}
 	
 		for (int i = 0; i < variable.length(); i++) {
 		    result.push(BigInteger.valueOf(variable.charAt(i)));
 		}
-		pushstring(result);
+		s.pushstring(result);
 	}
 
 	
-	static IT open() {
+	static IT open(Stack s) {
 		String filename = "";
-		NString text = popstring();
+		NString text = s.popstring();
 		for (int i = 0; i < text.size().intValue(); i++) {
 			if (text.index(BigInteger.valueOf(i)) != null) {
 				int c = text.index(BigInteger.valueOf(i)).intValue();
@@ -227,7 +263,7 @@ public class `+g.FileName+` {
 		it.Name = filename;
 		
 		if (file.exists()) {
-			push(BigInteger.valueOf(0));
+			s.push(BigInteger.valueOf(0));
 			try {
 				it.FileRead = new FileReader(file);
 				it.FileWrite = new FileWriter(file, true);
@@ -238,23 +274,23 @@ public class `+g.FileName+` {
 			}
 			return it;
 		}
-		push(BigInteger.valueOf(-1));
+		s.push(BigInteger.valueOf(-1));
 		return it;
 	}
 	
-	static void in(IT file) {
-		BigInteger length = pop();
+	static void in(Stack s, IT file) {
+		BigInteger length = s.pop();
 		for (int i = 0; i < length.intValue(); i++) {
 			try {
-				push(BigInteger.valueOf(file.FileRead.read()));
+				s.push(BigInteger.valueOf(file.FileRead.read()));
 			}catch(IOException e){
-				push(BigInteger.valueOf(-1000));
+				s.push(BigInteger.valueOf(-1000));
 			}
 		}
 	}
 	
-	static void out(IT file) {
-		NString text = popstring();
+	static void out(Stack s, IT file) {
+		NString text = s.popstring();
 		
 		if (text.size().intValue() == 0 || file.FileWrite == null ) {
 			if (file.Name.charAt(file.Name.length()-1) == '/') {
@@ -264,13 +300,13 @@ public class `+g.FileName+` {
 					try {
 						File f = new File(file.Name);
 						if (!f.mkdir()) {
-							push(BigInteger.valueOf(-1));
+							s.push(BigInteger.valueOf(-1));
 							return;
 						}
-						push(BigInteger.valueOf(0));
+						s.push(BigInteger.valueOf(0));
 						return;
 					} catch (Exception e) {
-						push(BigInteger.valueOf(-1));
+						s.push(BigInteger.valueOf(-1));
 						return;
 					}
 				}
@@ -279,10 +315,10 @@ public class `+g.FileName+` {
 			} else {
 				try {
 					new File(file.Name).createNewFile();
-					push(BigInteger.valueOf(0));
+					s.push(BigInteger.valueOf(0));
 					return;
 				} catch (Exception e)  {
-					push(BigInteger.valueOf(-1));
+					s.push(BigInteger.valueOf(-1));
 					return;
 				}
 			}
@@ -294,11 +330,11 @@ public class `+g.FileName+` {
 				try {
 					file.FileWrite.write((char)(c));
 				}catch(IOException e){
-					push(BigInteger.valueOf(-1));
+					s.push(BigInteger.valueOf(-1));
 				}
 			}
 		}
-		push(BigInteger.valueOf(0));
+		s.push(BigInteger.valueOf(0));
 	}
 	
 	static void close(IT file) {
@@ -310,8 +346,8 @@ public class `+g.FileName+` {
 		}
 	}
 
-	static void stdout() {
-		NString text = popstring();
+	static void stdout(Stack s) {
+		NString text = s.popstring();
 		for (int i = 0; i < text.size().intValue(); i++) {
 			if (text.index(BigInteger.valueOf(i)) != null) {
 				int c = text.index(BigInteger.valueOf(i)).intValue();
@@ -320,18 +356,18 @@ public class `+g.FileName+` {
 		} 
 	}
 	
-	static void stdin() {
-		BigInteger length = pop();
+	static void stdin(Stack s) {
+		BigInteger length = s.pop();
 		for (int i = 0; i < length.intValue(); i++) {
 			try {
 				int c = System.in.read();
 				if (c == -1) {
-					push(BigInteger.valueOf(-1000));
+					s.push(BigInteger.valueOf(-1000));
 					return;
 				}
-				push(BigInteger.valueOf(c));
+				s.push(BigInteger.valueOf(c));
 			}catch(IOException e){
-				push(BigInteger.valueOf(-1000));
+				s.push(BigInteger.valueOf(-1000));
 				return;
 			}
 		}
@@ -472,32 +508,43 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 	switch command {
 		case "ROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte(g.indt()+"public static void main(String[] args) {\nARGS=args;\n"), nil
+			g.Main = true
+			return []byte(g.indt()+"public static void main(String[] args) {\n\tARGS=args;\n\tStack STACK = new Stack();\n"), nil
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte(g.indt()+"static void "+args[0]+"() {\n"), nil
+			return []byte(g.indt()+"static void "+args[0]+"(Stack STACK) {\n"), nil
 		case "FUNC":
-			return []byte(g.indt()+"Method "+args[0]+" = null; try { "+args[0]+" = " +
+			return []byte(g.indt()+"Method "+args[0]+" = null;"+
+				"Class[] cArg = new Class[1];"+
+       			 "cArg[0] = Stack.class;"+
+        		"try { "+args[0]+" = " +
 				g.FileName+".class.getDeclaredMethod(\""+args[1]+
-				"\", (Class<?>[])null); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }\n"), nil
+				"\", cArg); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }\n"), nil
 		case "EXE":
 			return []byte(g.indt()+"try { "+args[0]+
-				".invoke(null); } catch (Exception e) {  throw new RuntimeException(e);}\n"), nil
+				".invoke(null, STACK); } catch (Exception e) {  throw new RuntimeException(e);}\n"), nil
+		case "FORK":
+			return []byte(g.indt()+"{ Stack s = STACK.copy(); Runnable r = new Runnable() { @Override public void run() { "+args[0]+"(s); } };\n"+
+				"pool__java.execute(r); }\n"), nil
 		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
+			var typ string = "BigInteger"
 			if command == "PUSHSTRING" {
 				name = "string"
+				typ  = "NString"
 			}
 			if command == "PUSHFUNC" {
 				name = "func"
+				typ  = "Method"
 			}
 			if command == "PUSHIT" {
 				name = "it"
+				typ  = "IT"
 			}
 			if len(args) == 1 {
-				return []byte(g.indt()+"push"+name+"("+args[0]+");\n"), nil
+				return []byte(g.indt()+"STACK.push"+name+"(("+typ+")"+args[0]+");\n"), nil
 			} else {
-				return []byte(g.indt()+args[1]+".push("+args[0]+");\n"), nil
+				return []byte(g.indt()+args[1]+".push(("+typ+")"+args[0]+");\n"), nil
 			}
 		case "POP", "POPSTRING", "POPFUNC", "POPIT":
 			var name string
@@ -514,29 +561,31 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 				name = "it"
 				typ  = "IT"
 			}
-			if len(args) == 1 {
-				return []byte(g.indt()+typ+" "+args[0]+" = pop"+name+"();\n"), nil
+			if len(args) == 0 {
+				return []byte(g.indt()+"STACK.pop"+name+"();\n"), nil
+			} else if len(args) == 1 {
+				return []byte(g.indt()+typ+" "+args[0]+" = STACK.pop"+name+"();\n"), nil
 			} else {
 				return []byte(g.indt()+typ+" "+args[0]+" = "+args[1]+".pop();\n"), nil
 			}
 		case "INDEX":
-			return []byte(g.indt()+"BigInteger "+args[2]+" = "+args[0]+".index("+args[1]+");\n"), nil
+			return []byte(g.indt()+"BigInteger "+args[2]+" = "+args[0]+".index((BigInteger)"+args[1]+");\n"), nil
 		case "SET":
-			return []byte(g.indt()+args[0]+".set("+args[1]+", "+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+".set((BigInteger)"+args[1]+", (BigInteger)"+args[2]+");\n"), nil
 		case "VAR":
 			if len(args) == 1 {
 				return []byte(g.indt()+"BigInteger "+args[0]+" = BigInteger.valueOf(0); \n"), nil
 			} else {
-				return []byte(g.indt()+"BigInteger "+args[0]+" = "+args[1]+"; \n"), nil
+				return []byte(g.indt()+"Object "+args[0]+" = "+args[1]+"; \n"), nil
 			}
 		
 		//IT stuff.
 		case "OPEN":
-			return []byte(g.indt()+"IT "+args[0]+" = open();\n"), nil
+			return []byte(g.indt()+"IT "+args[0]+" = open(STACK);\n"), nil
 		case "OUT":
-			return []byte(g.indt()+"out("+args[0]+");\n"), nil
+			return []byte(g.indt()+"out(STACK, "+args[0]+");\n"), nil
 		case "IN":
-			return []byte(g.indt()+"in("+args[0]+");\n"), nil
+			return []byte(g.indt()+"in(STACK, "+args[0]+");\n"), nil
 		case "CLOSE":
 			return []byte(g.indt()+"close("+args[0]+");\n"), nil
 			
@@ -546,18 +595,21 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		case "STRING":
 			return []byte(g.indt()+"NString "+args[0]+" = new NString();\n"), nil
 		case "STDOUT", "STDIN", "LOAD":
-			return []byte(g.indt()+strings.ToLower(command)+"();\n"), nil
+			return []byte(g.indt()+strings.ToLower(command)+"(STACK);\n"), nil
 		case "LOOP":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"while (true) {\n"), nil
 		case "REPEAT", "END", "DONE":
 			g.Indentation--
+			if g.Main {
+				return []byte("\tSystem.exit(0);\n}\n"), nil
+			}
 			return []byte(g.indt()+"}\n"), nil
 		case "IF":
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"if ("+args[0]+".compareTo(BigInteger.valueOf(0)) != 0) {\n"), nil
 		case "RUN":
-			return []byte(g.indt()+args[0]+"();\n"), nil
+			return []byte(g.indt()+args[0]+"(STACK);\n"), nil
 		case "ELSE":
 			return []byte(g.indt(-1)+"} else {\n"), nil
 		case "ELSEIF":
@@ -573,20 +625,20 @@ func (g *JavaAssembler) Assemble(command string, args []string) ([]byte, error) 
 		
 		//Maths.
 		case "ADD":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".add("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = ((BigInteger)"+args[1]+").add((BigInteger)"+args[2]+");\n"), nil
 		case "SUB":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".subtract("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = ((BigInteger)"+args[1]+").subtract((BigInteger)"+args[2]+");\n"), nil
 		case "MUL":
-			return []byte(g.indt()+args[0]+" = mul("+args[1]+", "+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = mul((BigInteger)"+args[1]+", (BigInteger)"+args[2]+");\n"), nil
 		case "DIV":
-			return []byte(g.indt()+args[0]+" = div("+args[1]+","+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = div((BigInteger)"+args[1]+",(BigInteger)"+args[2]+");\n"), nil
 		case "MOD":
-			return []byte(g.indt()+args[0]+" = "+args[1]+".mod("+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = ((BigInteger)"+args[1]+").mod((BigInteger)"+args[2]+");\n"), nil
 		case "POW":
-			return []byte(g.indt()+args[0]+" = pow("+args[1]+", "+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = pow((BigInteger)"+args[1]+", (BigInteger)"+args[2]+");\n"), nil
 			
 		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
-			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+");\n"), nil
+			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"((BigInteger)"+args[1]+",(BigInteger)"+args[2]+");\n"), nil
 		default:
 			/*if expression {
 				return []byte(g.indt()+command+" "+strings.Join(args, " ")+"\n"), nil

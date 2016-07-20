@@ -211,8 +211,8 @@ func BigInt(text string) AnyInt {
 }
 
 type String []AnyInt
-type StringString [][]AnyInt
-type Funcs []func()
+type StringString []String
+type Funcs []func(*Stack)
 type ITs []IT
 
 type IT struct {
@@ -221,15 +221,31 @@ type IT struct {
 	File *os.File
 }
 
-//These are the number and string stacks.
-var N String
-var N2 StringString
-
-//These are the function and IT stacks.
-var F Funcs
-var F2 ITs
+type Stack struct {
+	N String
+	N2 StringString
+	F Funcs
+	F2 ITs
+}
 
 var ERROR AnyInt
+
+func (s *Stack) copy() (n *Stack) {
+	n = new(Stack)
+	n.N = make(String, len(s.N))
+	copy(n.N, s.N)
+	n.N2 = make(StringString, len(s.N2))
+	for i := range s.N2 {
+		n.N2[i] = make(String, len(s.N2[i]))
+		copy(n.N2[i], s.N2[i])
+	}
+	n.F = make(Funcs, len(s.F))
+	copy(n.F, s.F)
+	n.F2 = make(ITs, len(s.F2))
+	copy(n.F2, s.F2)
+	return
+}
+
 
 func (s *String) push(n AnyInt) {
 	*s = append(*s, n)
@@ -255,11 +271,11 @@ func (p *ITs)  pop() (n IT) {
 	return
 }
 
-func (s *Funcs) push(n func()) {
+func (s *Funcs) push(n func(*Stack)) {
 	*s = append(*s, n)
 }
 
-func (p *Funcs) pop() (n func()) {
+func (p *Funcs) pop() (n func(*Stack)) {
 	s := *p
 	n = s[len(s)-1]
 	s = s[:len(s)-1]
@@ -279,48 +295,51 @@ func (p *StringString) pop() (n String) {
 	return
 }
 
-func pushstring(n String) {
-	N2.push(n)
+func (s *Stack) init() {
 }
 
-func popstring() (n String) {
-	return N2.pop()
+func (s *Stack) pushstring(n String) {
+	s.N2.push(n)
 }
 
-func push(n AnyInt) {
+func (s *Stack) popstring() (n String) {
+	return s.N2.pop()
+}
+
+func (s *Stack) push(n AnyInt) {
 	if n.Int == nil {
-		N.push(n)
+		s.N.push(n)
 	} else {
-		N.push(AnyInt{Int:big.NewInt(0).Set(n.Int)})
+		s.N.push(AnyInt{Int:big.NewInt(0).Set(n.Int)})
 	}
 }
 
-func popfunc() (n func()) {
-	return F.pop()
+func (s *Stack) popfunc() (n func(*Stack)) {
+	return s.F.pop()
 }
 
-func pushfunc(n func()) {
-	F.push(n)
+func (s *Stack) pushfunc(n func(*Stack)) {
+	s.F.push(n)
 }
 
-func popit() (n IT) {
-	return F2.pop()
+func (s *Stack) popit() (n IT) {
+	return s.F2.pop()
 }
 
-func pushit(n IT) {
-	F2.push(n)
+func (s *Stack) pushit(n IT) {
+	s.F2.push(n)
 }
 
-func pop() (n AnyInt) {
-	return N.pop()
+func (s *Stack) pop() (n AnyInt) {
+	return s.N.pop()
 }
 
-func load() {
+func load(s *Stack) {
 	var name string
 	var variable string
 	var result String
 	
-	text := popstring()
+	text := s.popstring()
 	
 	if text[0].Int64() == 36 && len(text) > 1 {
 	
@@ -340,14 +359,14 @@ func load() {
 	for _, v := range variable {
 		result = append(result, AnyInt{Small:int64(v)})
 	}
-	pushstring(result)
+	s.pushstring(result)
 }
 
-func open() (f IT) {
+func open(s *Stack) (f IT) {
 	var err error
 
 	var filename string
-	text := popstring()
+	text := s.popstring()
 	for _, v := range text {
 		filename += string(rune(v.Int64()))
 	}
@@ -356,21 +375,21 @@ func open() (f IT) {
 	it.Name = filename
 	it.File, err = os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0666)
 	if err == nil {
-		push(AnyInt{Int:big.NewInt(0)})
+		s.push(AnyInt{Int:big.NewInt(0)})
 		return it
 	}
 	if _, err = os.Stat(filename); err == nil {
-		push(AnyInt{Int:big.NewInt(0)})
+		s.push(AnyInt{Int:big.NewInt(0)})
 		return it
 	}
-	push(AnyInt{Int:big.NewInt(-1)})
+	s.push(AnyInt{Int:big.NewInt(-1)})
 	return it
 }
 
-func out(f IT) {
+func out(s *Stack, f IT) {
 	var err error
 	
-	text := popstring()
+	text := s.popstring()
 	
 	if f.File == nil {
 		if f.Name[len(f.Name)-1] == '/' {
@@ -380,43 +399,43 @@ func out(f IT) {
 			} else {
 				err := os.Mkdir(f.Name, 0666)
 				if err != nil {
-					push(AnyInt{Int:big.NewInt(-1)})
+					s.push(AnyInt{Int:big.NewInt(-1)})
 					return
 				}
 			}
 		} else {
 			f.File, err = os.Create(f.Name)
 			if err != nil {
-				push(AnyInt{Int:big.NewInt(-1)})
+				s.push(AnyInt{Int:big.NewInt(-1)})
 				return
 			}
 		}
 	}
 	if len(text) == 0 {
-		push(AnyInt{Int:big.NewInt(0)})
+		s.push(AnyInt{Int:big.NewInt(0)})
 		return
 	}
 	for _, v := range text {
 		if v.Int != nil {
 			_, err := f.File.Write(v.Bytes())
 			if err != nil {
-				push(AnyInt{Int:big.NewInt(-1)})
+				s.push(AnyInt{Int:big.NewInt(-1)})
 				return
 			}
 		} else {
 			_, err := f.File.Write([]byte{byte(v.Small)})
 			if err != nil {
-				push(AnyInt{Int:big.NewInt(-1)})
+				s.push(AnyInt{Int:big.NewInt(-1)})
 				return
 			}
 		}
 	} 
 	
-	push(AnyInt{Int:big.NewInt(0)})
+	s.push(AnyInt{Int:big.NewInt(0)})
 }
 
-func stdout() {
-	text := popstring()
+func stdout(s *Stack) {
+	text := s.popstring()
 	for _, v := range text {
 		if v.Int != nil {
 			os.Stdout.Write(v.Bytes())
@@ -426,11 +445,11 @@ func stdout() {
 	} 
 }
 
-func in(f IT) {
+func in(s *Stack, f IT) {
 	
-	length := pop()
+	length := s.pop()
 	if f.File == nil {
-		push(AnyInt{Int:big.NewInt(-1000)})
+		s.push(AnyInt{Int:big.NewInt(-1000)})
 		return
 	}
 	var b []byte = make([]byte, 1)
@@ -439,26 +458,26 @@ func in(f IT) {
 			var n int
 			n, _ = f.File.Read(b)
 			if n == 0 {
-				push(AnyInt{Int:big.NewInt(-1000)})
+				s.push(AnyInt{Int:big.NewInt(-1000)})
 				return
 			}
-			push(AnyInt{ Small:int64(b[0]) })
+			s.push(AnyInt{ Small:int64(b[0]) })
 		}
 	} else {
 		for i := int64(0); i < length.Small; i++ {	
 			var n int
 			n, _ = f.File.Read(b)
 			if n == 0 {
-				push(AnyInt{Int:big.NewInt(-1000)})
+				s.push(AnyInt{Int:big.NewInt(-1000)})
 				return
 			}
-			push(AnyInt{Small:int64(b[0])})
+			s.push(AnyInt{Small:int64(b[0])})
 		}
 	}
 }
 
-func stdin() {
-	length := pop()
+func stdin(s *Stack) {
+	length := s.pop()
 	var b []byte = make([]byte, 1)
 	var err error
 	if length.Int != nil {
@@ -467,11 +486,11 @@ func stdin() {
 			for n == 0 {
 				n, err = os.Stdin.Read(b)
 				if err == io.EOF {
-					push(AnyInt{ Small:-1000})
+					s.push(AnyInt{ Small:-1000})
 					return
 				}
 			}
-			push(AnyInt{ Small:int64(b[0]) })
+			s.push(AnyInt{ Small:int64(b[0]) })
 		}
 	} else {
 		for i := int64(0); i < length.Small; i++ {	
@@ -479,11 +498,11 @@ func stdin() {
 			for n == 0 {
 				n, err = os.Stdin.Read(b)
 				if err == io.EOF {
-					push(AnyInt{ Small:-1000})
+					s.push(AnyInt{ Small:-1000})
 					return
 				}
 			}
-			push(AnyInt{Small:int64(b[0])})
+			s.push(AnyInt{Small:int64(b[0])})
 		}
 	}
 }
@@ -642,21 +661,23 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			args[i] = newarg
 		}
 		switch arg {
-			case "byte", "len", "open", "file", "close", "load", "bool":
+			case "byte", "len", "open", "file", "close", "load", "bool", "copy":
 				args[i] = "u_"+args[i]
 		}
 	} 
 	switch command {
 		case "ROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte("func main() {\n"), nil
+			return []byte("func main() {\n\tvar STACK = new(Stack)\n\tSTACK.init()\n"), nil
 		case "SUBROUTINE":
 			defer func() { g.Indentation++ }()
-			return []byte("func "+args[0]+"() {\n"), nil
+			return []byte("func "+args[0]+"(STACK *Stack) {\n"), nil
 		case "FUNC":
 			return []byte(g.indt()+args[0]+" := "+args[1]+" \n"), nil
 		case "EXE":
-			return []byte(g.indt()+args[0]+"() \n"), nil
+			return []byte(g.indt()+args[0]+"(STACK) \n"), nil
+		case "FORK":
+			return []byte(g.indt()+"go "+args[0]+"(STACK.copy())\n"), nil
 		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
 			var name string
 			if command == "PUSHSTRING" {
@@ -667,7 +688,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 				name = "it"
 			}
 			if len(args) == 1 {
-				return []byte(g.indt()+"push"+name+"("+args[0]+")\n"), nil
+				return []byte(g.indt()+"STACK.push"+name+"("+args[0]+")\n"), nil
 			} else {
 				return []byte(g.indt()+args[1]+".push("+args[0]+")\n"), nil
 			}
@@ -680,8 +701,10 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			} else if command == "POPIT" {
 				name = "it"
 			}
-			if len(args) == 1 {
-				return []byte(g.indt()+args[0]+" := pop"+name+"()\n"), nil
+			if len(args) == 0 {
+				return []byte(g.indt()+"STACK.pop"+name+"()\n"), nil
+			} else if len(args) == 1 {
+				return []byte(g.indt()+args[0]+" := STACK.pop"+name+"()\n"), nil
 			} else {
 				return []byte(g.indt()+args[0]+" := "+args[1]+".pop()\n"), nil
 			}
@@ -700,11 +723,11 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			
 		//IT stuff.
 		case "OPEN":
-			return []byte(g.indt()+"var "+args[0]+" IT = open()\n"), nil
+			return []byte(g.indt()+"var "+args[0]+" IT = open(STACK)\n"), nil
 		case "OUT":
-			return []byte(g.indt()+"out("+args[0]+")\n"), nil
+			return []byte(g.indt()+"out(STACK, "+args[0]+")\n"), nil
 		case "IN":
-			return []byte(g.indt()+"in("+args[0]+")\n"), nil
+			return []byte(g.indt()+"in(STACK, "+args[0]+")\n"), nil
 		case "CLOSE":
 			return []byte(g.indt()+"close("+args[0]+")\n"), nil
 		
@@ -712,7 +735,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+"ERROR="+args[0]+"\n"), nil
 			
 		case "STDOUT", "STDIN", "LOAD":
-			return []byte(g.indt()+strings.ToLower(command)+"()\n"), nil
+			return []byte(g.indt()+strings.ToLower(command)+"(STACK)\n"), nil
 			
 		case "LOOP":
 			defer func() { g.Indentation++ }()
@@ -724,7 +747,7 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			defer func() { g.Indentation++ }()
 			return []byte(g.indt()+"if "+args[0]+".If() {\n"), nil
 		case "RUN":
-			return []byte(g.indt()+args[0]+"()\n"), nil
+			return []byte(g.indt()+args[0]+"(STACK)\n"), nil
 		case "ELSE":
 			return []byte(g.indt(-1)+"} else {\n"), nil
 		case "ELSEIF":

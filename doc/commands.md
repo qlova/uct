@@ -362,6 +362,20 @@ JOIN
 			STDOUT # Will output "First Last"
 		END
 
+FORK
+====
+	Executes a function with a copy of the stack, that function will run independantly.
+	
+	example:
+		SUBROUTINE myfunction
+			#Do something here.
+		END
+		
+		ROUTINE
+			FORK myfunction
+		END
+
+
 ADD, SUB, MUL, DIV, MOD, POW
 ============================
 	Maths...
