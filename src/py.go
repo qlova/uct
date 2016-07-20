@@ -143,7 +143,7 @@ def out(file):
 def inn(file):
 	length = pop()
 	for i in range(0, length):
-		v = file.read(1)
+		v = file[1].read(1)
 		if v == '':
 			push(-1000)
 			return
@@ -359,6 +359,9 @@ func (g *PythonAssembler) Assemble(command string, args []string) ([]byte, error
 		case "BREAK":
 			return []byte(g.indt()+"break\n"), nil
 		case "RETURN":
+			if g.Indentation == 1 {
+				return []byte("\n"), nil
+			}
 			return []byte(g.indt()+"return\n"), nil
 		case "STRINGDATA":
 			return []byte(g.indt()+args[0]+" = ["+args[1]+"] \n"), nil
