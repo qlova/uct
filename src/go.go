@@ -31,6 +31,8 @@ import "os"
 import "io"
 import "fmt"
 import "crypto/rand"
+import "net"
+import "strings"
 
 type AnyInt struct {
 	*big.Int
@@ -218,7 +220,8 @@ type ITs []IT
 type IT struct {
 	Name string
 	
-	File *os.File
+	File io.ReadWriteCloser
+	Connection net.Conn
 }
 
 type Stack struct {
@@ -226,6 +229,9 @@ type Stack struct {
 	N2 StringString
 	F Funcs
 	F2 ITs
+	
+	C chan AnyInt
+	P chan AnyInt
 }
 
 var ERROR AnyInt
@@ -243,6 +249,10 @@ func (s *Stack) copy() (n *Stack) {
 	copy(n.F, s.F)
 	n.F2 = make(ITs, len(s.F2))
 	copy(n.F2, s.F2)
+	
+	n.C = make(chan AnyInt, 20)
+	n.P = s.C
+	
 	return
 }
 
@@ -296,6 +306,7 @@ func (p *StringString) pop() (n String) {
 }
 
 func (s *Stack) init() {
+	s.C = make(chan AnyInt, 20)
 }
 
 func (s *Stack) pushstring(n String) {
@@ -334,10 +345,13 @@ func (s *Stack) pop() (n AnyInt) {
 	return s.N.pop()
 }
 
+var Networks_In = make(map[string]net.Listener)
+
 func load(s *Stack) {
 	var name string
 	var variable string
 	var result String
+	var err error
 	
 	text := s.popstring()
 	
@@ -351,9 +365,45 @@ func load(s *Stack) {
 		}
 		variable = os.Getenv(name)
 	} else {
-		if len(os.Args) > int(text[0].Int64()) {
-			variable = os.Args[text[0].Int64() ]
-		} 
+	
+		for _, v := range text {
+			name += string(rune(v.Int64()))
+		}
+		protocol := strings.SplitN(name, "://", 2)
+		if len(protocol) > 1 {
+			switch protocol[0] {
+				case "tcp":
+					listener, err := net.Listen("tcp", ":"+protocol[1])
+					_, variable, _ = net.SplitHostPort(listener.Addr().String())
+					if protocol[1] == "0" {
+						Networks_In[variable] = listener
+					} else {
+						Networks_In[protocol[1]] = listener
+					}
+					if err != nil {
+						ERROR = AnyInt{Small:int64(1)}
+					}
+				case "dns":
+					//This can be optimised. Check the string.
+					hosts, err := net.LookupAddr(protocol[1])
+					if err != nil {
+						hosts, err = net.LookupHost(protocol[1])
+						if err != nil {
+							ERROR = AnyInt{Small:int64(1)}
+						}
+					}
+					variable = strings.Join(hosts, " ")
+				default:
+					if err != nil {
+						ERROR = AnyInt{Small:int64(1)}
+					}
+			}
+		} else {
+	
+			if len(os.Args) > int(text[0].Int64()) {
+				variable = os.Args[text[0].Int64() ]
+			} 
+		}
 	}
 	
 	for _, v := range variable {
@@ -371,8 +421,39 @@ func open(s *Stack) (f IT) {
 		filename += string(rune(v.Int64()))
 	}
 	
+	
 	var it IT
 	it.Name = filename
+	
+	protocol := strings.SplitN(filename, "://", 2)
+	if len(protocol) > 1 {
+		switch protocol[0] {
+		
+			case "tcp":
+				if listener, ok := Networks_In[protocol[1]]; ok {
+					
+					it.Connection, err = listener.Accept()
+					it.File = it.Connection
+					if err != nil {
+						s.push(AnyInt{Int:big.NewInt(-1)})
+						return it
+					}
+					s.push(AnyInt{Int:big.NewInt(0)})
+					return it
+					
+				} else {
+					it.Connection, err = net.Dial("tcp", protocol[1])
+					it.File = it.Connection
+					if err != nil {
+						s.push(AnyInt{Int:big.NewInt(-1)})
+						return it
+					}
+					s.push(AnyInt{Int:big.NewInt(0)})
+					return it
+				}
+		}
+	}
+
 	it.File, err = os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0666)
 	if err == nil {
 		s.push(AnyInt{Int:big.NewInt(0)})
@@ -386,10 +467,50 @@ func open(s *Stack) (f IT) {
 	return it
 }
 
+func info(s *Stack) {
+	var request string
+	var variable string
+	
+	var result String
+
+	text := s.popstring()
+	it := s.popit()
+	
+	for _, v := range text {
+		request += string(rune(v.Int64()))
+	}
+	
+	switch request {
+		case "address":
+			if it.Connection != nil {
+				variable = it.Connection.RemoteAddr().String()
+			}
+		case "ip":
+			if it.Connection != nil {
+				variable = strings.Split(it.Connection.RemoteAddr().String(), ":")[0]
+			}
+		case "port":
+			if it.Connection != nil {
+				variable = strings.Split(it.Connection.RemoteAddr().String(), ":")[1]
+			}
+	}
+	
+	for _, v := range variable {
+		result = append(result, AnyInt{Small:int64(v)})
+	}
+	s.pushstring(result)
+}
+
 func out(s *Stack, f IT) {
 	var err error
 	
 	text := s.popstring()
+	
+	if f.Name == "" {
+		for i:=0; i < len(text); i++ {
+			s.P <- text[i]
+		}
+	}
 	
 	if f.File == nil {
 		if f.Name[len(f.Name)-1] == '/' {
@@ -446,8 +567,16 @@ func stdout(s *Stack) {
 }
 
 func in(s *Stack, f IT) {
-	
+
 	length := s.pop()
+	
+	if f.Name == "" {
+		for i:=int64(0); i < length.Small; i++ {
+			s.push(<-s.C)
+		}
+	}
+	
+	
 	if f.File == nil {
 		s.push(AnyInt{Int:big.NewInt(-1000)})
 		return
@@ -726,6 +855,8 @@ func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
 			return []byte(g.indt()+"var "+args[0]+" IT = open(STACK)\n"), nil
 		case "OUT":
 			return []byte(g.indt()+"out(STACK, "+args[0]+")\n"), nil
+		case "INFO":
+			return []byte(g.indt()+"info(STACK)\n"), nil
 		case "IN":
 			return []byte(g.indt()+"in(STACK, "+args[0]+")\n"), nil
 		case "CLOSE":

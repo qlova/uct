@@ -66,10 +66,10 @@ The table also shows experimental feature support.
 
 | Language |  I/O  | Networking | Threading |
 |----------|-------|------------|-----------|
-|Go		   |  YES  |     NO     |    YES    |
+|Go		   |  YES  |    YES     |    YES    |
 |Bash	   |  SOME |     NO     |    NO     |
 |Python	   |  YES  |     NO     |    NO     |
-|Java	   |  SOME |     NO     |    YES    |
+|Java	   |  SOME |    YES     |    YES    |
 |Ruby	   |  SOME |     NO     |    NO     |
 |C#		   |  SOME |     NO     |    NO     |
 |Lua       |  SOME |     NO     |    NO     |
