@@ -45,6 +45,7 @@ var JavaAssembly = Assemblable{
 	
 	"NUMBER": is("new Stack.Number(%s)", 1),
 	"SIZE": is("%s.size()", 1),
+	"STRING": is("new Stack.Array(%s)", 1),
 	"ERROR": is("stack.ERROR", 1),
 
 	"SOFTWARE": Instruction{
@@ -104,7 +105,7 @@ var JavaAssembly = Assemblable{
 	"END": is("}", 0, -1, -1),
 	
 	"RUN": is("%s();", 1),
-	"DATA": is("static Stack.Array %s = new Stack.Array(%s);", 2),
+	"DATA": is("static Stack.Array %s = %s;", 2),
 	
 	"FORK": is("{ Stack s = stack.copy(); pool__java.execute(() -> %s(s)); }\n"),
 	
