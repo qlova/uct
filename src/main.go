@@ -113,10 +113,9 @@ func main() {
 	}
 	
 	{
-		var extension = filepath.Ext(flag.Arg(0))
-		var name = filepath.Base(flag.Arg(0)[0:len(flag.Arg(0))-len(extension)])
+		
 
-		assembler.SetFileName(name)
+		assembler.SetFileName(flag.Arg(0))
 	}
 
 	//Write any necessary headers.
