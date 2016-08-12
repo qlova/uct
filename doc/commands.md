@@ -2,121 +2,175 @@
 
 This document will go through the available commands in uct assembly.
 
-ROUTINE
+SOFTWARE/EXIT
 =======
-	The routine command is needed in all uct software. It is the entrypoint of your application.
+	This is the entrypoint of your application. The close command will exit the software.
+	SOFTWARE must be followed at some point by EXIT
 	
 	example:
 		
 		#Basic application.
-		ROUTINE
+		SOFTWARE
 			
-		END
+		EXIT
 
-SUBROUTINE
+FUNCTION
 ==========
-	The subroutine command allows you to define subroutines.
+	The function command allows you to define functions.
+	FUNCTION must be followed at some point by RETURN.
 	
 	example:
 		
-		SUBROUTINE myfunction
+		FUNCTION name
 			#Do something here.
-		END
-
-FUNC
-====
-	The func command creates a new scoped function.
+		RETURN
+		
+HEAP
+======
+	The heap is a heap of arrays.
 	
 	example:
 		
-		SUBROUTINE anotherfunction
 		
-		END
-		
-		ROUTINE
-			FUNC anotherfunction
-			#you can now use anotherfunction as if it were a variable.
-		END
-
-EXE
-====
-	exe will run a scoped function.
+PUT/PLACE/POP
+===========
+	These allow you to add values to stacks.
 	
 	example:
 		
-		SUBROUTINE needstorun
-		
-		END
-		
-		ROUTINE
-			FUNC needstorun
-			#This will run the scoped function.
-			EXE needstorun
-		END
+		SOFTWARE
+			STACK a
+				PUT 1
+			STACK b
+				PUT 1
+			PLACE a
+				PUT 2
+			PLACE b
+				PUT 2
+				POP variable
+				
+			# a is now [1, 2]
+			# b is now [1]
+			# variable is now 2
+		EXIT
 
-PUSH, PUSHSTRING, PUSHFUNC, PUSHIT
-==================================
-	The push functions push the given scoped variable onto the respective stack.
-	The default push can push onto strings too.
+PUSH/PULL
+==========
+	These two commands can be used to push values to functions.
 	
 	example:
-		ROUTINE
-			STRING mystring
-			PUSH 97 mystring
-			PUSH 98 mystring
-			PUSHSTRING mystring
-			STDOUT #Will print "ab"
-		END
-
-POP, POPSTRING POPFUNC, POPIT
-=============================
-	The pop functions pop a value off the stack and bring the values into scope.
-	You do no declare a value which you pop.
-	The plain pop function can be used to pop off strings.
-	
-	example:
-		ROUTINE
-			PUSH 20
-			POP a
-			#a now has the value '20'
+		FUNCTION echo
+			PULL number
 			
-			STRING anotherstring
-			PUSH 10 anotherstring
+			STACK text
+				PUT number
 			
-			POP b anotherstring
-			#b now has the value 10
-		END
+			PASS text
+			STDOUT
+		RETURN
 		
-INDEX
+		#This will print 'a'
+		SOFTWARE
+			PUSH 97
+			RUN echo
+		EXIT
+
+SHARE/GRAB
+===========
+	These can be used to pass and take stacks, stacks are threadsafe.
+	
+	example:
+		FUNCTION echo
+			GRAB stack
+			SHARE stack
+			STDOUT
+		RETURN
+	
+		#This will print 'a'
+		SOFTWARE
+			
+
+RELAY/TAKE
+============
+	These are used for passing I/O's
+	
+	example:
+		FUNCTION message
+			TAKE file
+			GRAB text
+			
+			
+			OUT
+		RETURN
+		
+		SOFTWARE
+		
+			OPEN file
+			STACK name
+				PUT 97
+			SHARE name
+			
+			RUN echo
+		EXIT
+
+# WIP
+
+RING/LINK/NEXT/SELECT
+=======================
+	This is a data structure for IO devices.
+	Select will select a device which is ready to recieve. (Blocking)
+	The call to next after this will give you that file.
+	
+	
+	example:
+	
+		SOFTWARE
+			RING files
+				LINK file
+				SELECT file
+				
+			RELAY file
+			IN
+			
+			
+			NEXT file
+			
+		EXIT
+	
+		
+		
+GET
 =====
-	The index command will index a string.
+	The get command will index a stack.
 
 	example:
 	
-		ROUTINE
-			STRING items
-			PUSH 22 items
-			PUSH 11 items
-			INDEX items 0 a
+		SOFTWARE
+			STACK items
+				PUT 22
+				PUT 11
+				PUSH 0
+				GET a
 			#a now holds the value 22
-		END
-
-SET
-===
-	Set can modify a string by index.
-	
-	example:
+		EXIT
 		
-		ROUTINE
-			STRING ages
-			PUSH 35 ages
-			PUSH 16 ages
-			PUSH 24 ages
-			
-			SET ages 1 18
-			
+SET
+=====
+	The set command will modify a string.
+
+	example:
+	
+		SOFTWARE
+			STACK ages
+				PUT 35
+				PUT 16
+				PUT 24
+				
+				PUSH 1
+				SET 18
 			#String will now be: [35, 18, 24]
-		END
+		EXIT
+
 
 VAR
 ===
@@ -124,21 +178,25 @@ VAR
 	
 	example:
 		
-		ROUTINE
+		SOFTWARE
 			VAR a
-			VAR b 10
+			VAR b
 			
 			#a=0 and b=10
-		END
+		EXIT
 
-STRING
-======
-	Initialise a string.
+STACK/RESTACK
+===============
+	Initialise a stack.
 	
 	example:
 		
-		ROUTINE
-			STRING A
+		SOFTWARE
+			STACK A
+			STACK B
+			SHARE B
+			RESTACK A
+			# A = B
 		END
 
 OPEN
@@ -150,7 +208,7 @@ OPEN
 	
 		STRINGDATA input "file.name"
 		
-		ROUTINE
+		SOFTWARE
 			PUSHSTRING input
 			OPEN it
 			POP failed
@@ -173,7 +231,7 @@ OUT
 		STRINGDATA input "file.name"
 		STRINGDATA data "1234567890"
 		
-		ROUTINE
+		SOFTWARE
 			PUSHSTRING input
 			OPEN it
 			POP failed
@@ -202,7 +260,7 @@ IN
 	
 		STRINGDATA input "file.name"
 		
-		ROUTINE
+		SOFTWARE
 			PUSHSTRING input
 			OPEN it
 			POP failed
@@ -230,7 +288,7 @@ CLOSE
 		
 		STRINGDATA input "file.name"
 		
-		ROUTINE
+		SOFTWARE
 			PUSHSTRING input
 			OPEN it
 			POP failed
@@ -250,7 +308,7 @@ LOAD
 		
 		STRINGDATA home "$HOME"
 		
-		ROUTINE
+		SOFTWARE
 			PUSHSTRING home
 			LOAD
 			STDOUT
@@ -264,7 +322,7 @@ STDOUT
 		
 		STRINGDATA helloworld "Hello World"
 		
-		ROUTINE
+		SOFTWARE
 			PUSHSTRING helloworld
 			STDOUT
 		END
@@ -277,7 +335,7 @@ STDIN
 	
 	example:
 	
-		ROUTINE
+		SOFTWARE
 			PUSH 2
 			STDIN 
 			
@@ -291,7 +349,7 @@ LOOP, REPEAT, BREAK
 	
 	example:
 		
-		ROUTINE
+		SOFTWARE
 			LOOP
 				BREAK
 			REPEAT
@@ -303,7 +361,7 @@ IF, ELSE
 	
 	example:
 		
-		ROUTINE
+		SOFTWARE
 			VAR a
 			IF a
 				#This will not run.
@@ -314,66 +372,66 @@ IF, ELSE
 
 RUN
 ===
-	Jump to a subroutine.
+	Jump to a function.
 	
 	example:
 		
-		SUBROUTINE next
+		FUNCTION next
 			#This runs!
-		END
+		RETURN
 		
-		ROUTINE
+		SOFTWARE
 			RUN next
-		END
+		EXIT
 
 RETURN
 ======
-	Return from current routine or subroutine.
+	Return from current SOFTWARE or subSOFTWARE.
 	
 	example:
 		
-		ROUTINE
+		SOFTWARE
 			RETURN
-		END
+		EXIT
 
-STRINGDATA
+DATA
 ==========
-	Literal string. Must be outside routine.
+	Literal string. Must be outside SOFTWARE.
 	
 	example:
-		STRINGDATA text "How are you?"
+		DATA question "How are you?"
 		
-		ROUTINE
-			PUSHSTRING text
+		SOFTWARE
+			SHARE question
 			STDOUT
-		END
+		EXIT
 
 JOIN
 ====
 	Join two strings together.
 	
 	example:
-		STRINGDATA a "First "
-		STRINGDATA b "Last"
+		DATA a "First "
+		DATA b "Last"
 		
-		ROUTINE
+		SOFTWARE
 			JOIN c a b
 			PUSHSTRING c
 			STDOUT # Will output "First Last"
-		END
+		EXIT
 
 FORK
 ====
 	Executes a function with a copy of the stack, that function will run independantly.
 	
 	example:
-		SUBROUTINE myfunction
+		FUNCTION myfunction
 			#Do something here.
-		END
+		RETURN
 		
-		ROUTINE
+		SOFTWARE
 			FORK myfunction
-		END
+		EXIT
 
 
 ADD, SUB, MUL, DIV, MOD, POW
@@ -382,13 +440,15 @@ ADD, SUB, MUL, DIV, MOD, POW
 	
 	example:
 		
-		ROUTINE
-			VAR a = 22
-			VAR b = 2
-			VAR c
+		SOFTWARE
+			VAR a
+			ADD a 0 22
+			
+			VAR b
+			ADD b 0 2
 			
 			ADD c a b
-		END
+		EXIT
 
 SLT, SEQ, SGE, SGT, SNE, SLE
 ============================
@@ -396,7 +456,7 @@ SLT, SEQ, SGE, SGT, SNE, SLE
 	
 	example:
 		
-		ROUTINE
+		SOFTWARE
 			VAR a 50
 			VAR b 60
 			VAR c
@@ -408,4 +468,4 @@ SLT, SEQ, SGE, SGT, SNE, SLE
 			SNE c a b
 			
 			# c will be 1
-		END
+		EXIT
