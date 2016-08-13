@@ -222,7 +222,7 @@ func assemble(filename string) error {
 		//Resolve aliases.
 		resolve:
 		for i, token := range tokens {
-			if tokens[0] == "STRINGDATA" {
+			if tokens[0] == "DATA" {
 				break
 			}
 			if len(token) == 0 {
