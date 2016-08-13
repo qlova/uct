@@ -1,6 +1,7 @@
 package main
 
 import "flag"
+import "fmt"
 
 var JavaReserved = []string{
 	"abstract", "continue", "for", "new", "switch", "assert", "default",
@@ -47,7 +48,7 @@ var JavaAssembly = Assemblable{
 	"NUMBER": is("new Stack.Number(%s)", 1),
 	"SIZE":   is("%s.size()", 1),
 	"STRING": is("new Stack.Array(%s)", 1),
-	"ERROR":  is("stack.ERROR", 1),
+	"ERRORS":  is("stack.ERROR", 1),
 
 	"SOFTWARE": Instruction{
 		Data:   "public static void main(String[] args) { Stack stack = new Stack(); stack.Arguments = args;",
@@ -64,66 +65,85 @@ var JavaAssembly = Assemblable{
 	},
 
 	"FUNCTION": is("static void %s(Stack stack) {", 1, 1),
-	"RETURN":   is("}", 0, -1, -1),
+	"RETURN": Instruction{
+		Indented:    2,
+		Data:        "}\n",
+		Indent:      -1,
+		Indentation: -1,
+		Else: &Instruction{
+			Data: "return;",
+		},
+	},
+	
+	"SCOPE": is(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Stack.Pipe((new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%v", cArg)))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, 1),
+	
+	"EXE": is("%v.exe(stack);", 1),
 
 	"PUSH": is("stack.push(%s);", 1),
 	"PULL": is("Stack.Number %s = stack.pull();", 1),
 
 	"PUT":   is("stack.put(%s);", 1),
-	"POP":   is("Number %s = stack.pop();", 1),
+	"POP":   is("Stack.Number %s = stack.pop();", 1),
 	"PLACE": is("stack.place(%s);", 1),
 
 	"ARRAY":  is("Stack.Array %s = stack.array();", 1),
 	"RENAME": is("%s = stack.ActiveArray", 1),
 
 	"SHARE": is("stack.share(%s);", 1),
-	"GRAB":  is("ARRAY %s = stack.grab();", 1),
+	"GRAB":  is("Stack.Array %s = stack.grab();", 1),
 
 	"RELAY": is("stack.relay(%s);", 1),
-	"TAKE":  is("PIPE %s = stack.take();", 1),
+	"TAKE":  is("Stack.Pipe %s = stack.take();", 1),
 
 	"GET": is("Stack.Number %s = stack.get();", 1),
 	"SET": is("stack.set(%s);", 1),
 
-	"VAR": is("Stack.Number %s = new Number();", 1),
+	"VAR": is("Stack.Number %s = new Stack.Number();", 1),
 
 	"OPEN":   is("stack.open();"),
 	"LOAD":   is("stack.load();"),
 	"OUT":    is("stack.out();"),
+	"STAT":   is("stack.info();"),
 	"IN":     is("stack.in();"),
 	"STDOUT": is("stack.stdout();"),
 	"STDIN":  is("stack.stdin();"),
 
 	"CLOSE": is("%s.close();", 1),
 
-	"LOOP":   is("while (true) {"),
-	"BREAK":  is("break"),
-	"REPEAT": is("}"),
+	"LOOP":   is("while (true) {", 0, 1),
+	"BREAK":  is("break;"),
+	"REPEAT": is("}", 0, -1, -1),
 
-	"IF":   is("if (%s.compareTo(new Number(1)) == 0 ) {", 1, 1),
+	"IF":   is("if (%v.compareTo(new Stack.Number(0)) != 0 ) {", 1, 1),
 	"ELSE": is("} else {", 0, 0, -1),
 	"END":  is("}", 0, -1, -1),
 
-	"RUN":  is("%s();", 1),
+	"RUN":  is("%s(stack);", 1),
 	"DATA": is("static Stack.Array %s = %s;", 2),
 
-	"FORK": is("{ Stack s = stack.copy(); pool__java.execute(() -> %s(s)); }\n"),
+	"FORK": is("{ Stack s = stack.copy(); Stack.ThreadPool.execute(() -> %s(s)); }\n", 1),
 
-	"ADD": is("%s = %s.add(%s);"),
-	"SUB": is("%s = %s.sub(%s);"),
-	"MUL": is("%s = %s.mul(%s);"),
-	"DIV": is("%s = %s.div(%s);"),
-	"MOD": is("%s = %s.mod(%s);"),
-	"POW": is("%s = %s.pow(%s);"),
+	"ADD": is("%s = %s.add(%s);", 3),
+	"SUB": is("%s = %s.sub(%s);", 3),
+	"MUL": is("%s = %s.mul(%s);", 3),
+	"DIV": is("%s = %s.div(%s);", 3),
+	"MOD": is("%s = %s.mod(%s);", 3),
+	"POW": is("%s = %s.pow(%s);", 3),
 
-	"SLT": is("%s = %s.compareTo(%s) == -1 ? Stack.One : Stack.Zero;"),
-	"SEQ": is("%s = %s.compareTo(%s) == 0 ? Stack.One : Stack.Zero;"),
-	"SGE": is("%s = %s.compareTo(%s) >= 0 ? Stack.One : Stack.Zero;"),
-	"SGT": is("%s = %s.compareTo(%s) == 1 ? Stack.One : Stack.Zero;"),
-	"SNE": is("%s = %s.compareTo(%s) != 0 ? Stack.One : Stack.Zero;"),
-	"SLE": is("%s = %s.compareTo(%s) <= 0 ? Stack.One : Stack.Zero;"),
+	"SLT": is("%s = %s.compareTo(%s) == -1 ? new Stack.Number(1) : new Stack.Number(0);", 3),
+	"SEQ": is("%s = %s.compareTo(%s) == 0 ? new Stack.Number(1) : new Stack.Number(0);", 3),
+	"SGE": is("%s = %s.compareTo(%s) >= 0 ? new Stack.Number(1) : new Stack.Number(0);", 3),
+	"SGT": is("%s = %s.compareTo(%s) == 1 ? new Stack.Number(1) : new Stack.Number(0);", 3),
+	"SNE": is("%s = %s.compareTo(%s) != 0 ? new Stack.Number(1) : new Stack.Number(0);", 3),
+	"SLE": is("%s = %s.compareTo(%s) <= 0 ? new Stack.Number(1) : new Stack.Number(0);", 3),
 
-	"JOIN": is("%s = %s.join(%s);"),
+	"JOIN": is("%s = %s.join(%s);", 3),
+	"ERROR": is("stack.ERROR = %s;", 1),
+}
+
+func JavaScope(args []string) string {
+		filename := JavaAssembly["NAME"].Data
+		return fmt.Sprintf(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Pipe(new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%v", cArg))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, filename, args[0])
 }
 
 //Edit this in a Java IDE.
@@ -169,9 +189,6 @@ public class Stack {
 
     //This will store the system arguments.
     public static String[] Arguments;
-
-  	static final Number Zero = (Number)Number.ZERO;
-    static final Number One = (Number)Number.ONE;
 
     //This is the threading pool.
     public static Executor ThreadPool = Executors.newCachedThreadPool();
@@ -240,17 +257,17 @@ public class Stack {
     void place(Array a) {
         ActiveArray = a;
     }
-    
+
     //ARRAY name
     Array array() {
-    	Array a = new Array();
-    	ActiveArray = a;
-    	return a;
+        Array a = new Array();
+        ActiveArray = a;
+        return a;
     }
 
     //GET number
-    Number get(Array a) {
-        return (Number)ActiveArray.index(pull());
+    Number get() {
+        return ActiveArray.index(pull().mod(ActiveArray.size()));
     }
 
     //SET number
@@ -259,20 +276,20 @@ public class Stack {
     }
 
     //POP number
-    Number pop(Array a) {
-        return (Number)ActiveArray.pop();
+    Number pop() {
+        return ActiveArray.pop();
     }
 
     //PULL number
     Number pull() {
-        return (Number)Numbers.pop();
+        return Numbers.pop();
     }
 
     void stdout() {
         Array text = grab();
         for (int i = 0; i < text.size().intValue(); i++) {
-            if (text.index(BigInteger.valueOf(i)) != null) {
-                int c = text.index(BigInteger.valueOf(i)).intValue();
+            if (text.index(new Number(i)) != null) {
+                int c = text.index(new Number(i)).intValue();
                 System.out.print((char)(c));
             }
         }
@@ -284,12 +301,12 @@ public class Stack {
             try {
                 int c = System.in.read();
                 if (c == -1) {
-                    push((Number)BigInteger.valueOf(-1000));
+                    push(new Number(-1000));
                     return;
                 }
-                push((Number)BigInteger.valueOf(c));
+                push(new Number(c));
             }catch(Exception e){
-                push((Number)BigInteger.valueOf(-1000));
+                push(new Number(-1000));
                 return;
             }
         }
@@ -297,7 +314,7 @@ public class Stack {
 
     void in() {
         Pipe file = take();
-        BigInteger length = pull();
+        Number length = pull();
         int n = 0;
         byte[] b = new byte[length.intValue()];
 
@@ -305,16 +322,16 @@ public class Stack {
             try {
                 n = file.input.read(b);
             }catch(Exception e){
-                push((Number)BigInteger.valueOf(-1000));
+                push(new Number(-1000));
             }
         }
 
         if ((b.length > 1) || (n <= 0)) {
-            push((Number)BigInteger.valueOf(-1000));
+            push(new Number(-1000));
         }
 
         for (int i = n-1; i >= 0; i--) {
-            push((Number)BigInteger.valueOf(b[i]));
+            push(new Number(b[i]));
         }
 
         return;
@@ -327,16 +344,16 @@ public class Stack {
         if (file.output != null) {
             //TODO optimise to send in a single packet.
             for (int i = 0; i < text.size().intValue(); i++) {
-                if (text.index(BigInteger.valueOf(i)) != null) {
-                    int c = text.index(BigInteger.valueOf(i)).intValue();
+                if (text.index(new Number(i)) != null) {
+                    int c = text.index(new Number(i)).intValue();
                     try {
                         file.output.write((char)(c));
                     }catch(Exception e){
-                        push((Number)BigInteger.valueOf(-1));
+                        push(new Number(-1));
                     }
                 }
             }
-            push((Number)BigInteger.valueOf(0));
+            push(new Number(0));
             return;
         }
 
@@ -348,13 +365,13 @@ public class Stack {
                     try {
                         File f = new File(file.Name);
                         if (!f.mkdir()) {
-                            push((Number)BigInteger.valueOf(-1));
+                            push(new Number(-1));
                             return;
                         }
-                        push((Number)BigInteger.valueOf(0));
+                        push(new Number(0));
                         return;
                     } catch (Exception e) {
-                        push((Number)BigInteger.valueOf(-1));
+                        push(new Number(-1));
                         return;
                     }
                 }
@@ -363,38 +380,38 @@ public class Stack {
             } else {
                 try {
                     new File(file.Name).createNewFile();
-                    push((Number)BigInteger.valueOf(0));
+                    push(new Number(0));
                     return;
                 } catch (Exception e)  {
-                    push((Number)BigInteger.valueOf(-1));
+                    push(new Number(-1));
                     return;
                 }
             }
         }
 
         for (int i = 0; i < text.size().intValue(); i++) {
-            if (text.index(BigInteger.valueOf(i)) != null) {
-                int c = text.index(BigInteger.valueOf(i)).intValue();
+            if (text.index(new Number(i)) != null) {
+                int c = text.index(new Number(i)).intValue();
                 try {
                     file.output.write((char)(c));
                 }catch(Exception e){
-                    push((Number)BigInteger.valueOf(-1));
+                    push(new Number(-1));
                 }
             }
         }
-        push((Number)BigInteger.valueOf(0));
+        push(new Number(0));
     }
 
 
     //LOAD
-    static void load(Stack stack) {
+    void load() {
         String name = "";
         String variable = "";
 
         Array result = new Array();
 
         //This request is what we need to load.
-        Array request = stack.grab();
+        Array request = grab();
 
         //The request is an enviromental variable.
         if (request.index(0) == '$' && request.length() > 1) {
@@ -407,7 +424,7 @@ public class Stack {
 
                 }
             }
-            stack.share(new Array(System.getenv(name)));
+            share(new Array(System.getenv(name)));
             return;
         }
 
@@ -431,8 +448,10 @@ public class Stack {
                             Networks_In.put(protocol[1], ss);
                             variable = protocol[1];
                         }
+                        share(new Array(variable));
+                        return;
                     } catch (Exception e) {
-                        stack.ERROR = new Number(-1);
+                        ERROR = new Number(-1);
                     }
                     break;
 
@@ -444,6 +463,8 @@ public class Stack {
                             variable = "";
                             throw null;
                         }
+                        share(new Array(variable));
+                        return;
                     } catch (Exception e) {
                         try {
                             InetAddress[] addresses = InetAddress.getAllByName(protocol[1]);
@@ -451,34 +472,36 @@ public class Stack {
                                 variable += addresses[i].getHostAddress();
                                 variable += " ";
                             }
+                            share(new Array(variable));
+                        return;
                         } catch (Exception e2) {
-                            stack.ERROR = new Number(-1);
+                            ERROR = new Number(-1);
                         }
                     }
             }
         }
 
-        if (Arguments.length > request.index(BigInteger.valueOf(0)).intValue()-1) {
-            stack.share(new Array(Arguments[request.index(BigInteger.valueOf(0)).intValue()-1]));
+        if (Arguments.length > request.index(new Number(0)).intValue()-1) {
+            share(new Array(Arguments[request.index(new Number(0)).intValue()-1]));
             return;
         }
 
-        stack.share(result);
-        stack.ERROR = new Number(404);
+        share(result);
+        ERROR = new Number(404);
         return;
     }
 
 
-    static Pipe open(Stack stack) {
+    void open() {
 
-        Array request = stack.grab();
+        Array request = grab();
         String path = request.String();
 
-        Pipe Pipe = new Pipe();
-        Pipe.Name = path;
+        Pipe pipe = new Pipe();
+        pipe.Name = path;
 
         //Load various protocols.
-        String[] protocol = Pipe.Name.split("://", 2);
+        String[] protocol = pipe.Name.split("://", 2);
         if (protocol.length > 1) {
             switch (protocol[0]) {
                 case "tcp":
@@ -486,30 +509,34 @@ public class Stack {
                     if (server != null) {
                         try {
                             Socket client = server.accept();
-                            Pipe.socket = client;
-                            Pipe.input = client.getInputStream();
-                            Pipe.output = client.getOutputStream();
+                            pipe.socket = client;
+                            pipe.input = client.getInputStream();
+                            pipe.output = client.getOutputStream();
                         } catch( Exception e) {
-                            stack.push((Number)BigInteger.valueOf(-1));
-                            return Pipe;
+                            push(new Number(-1));
+                            relay(pipe);
+                            return;
                         }
-                        stack.push((Number)BigInteger.valueOf(0));
-                        return Pipe;
+                        push(new Number(0));
+                         relay(pipe);
+                         return;
                     } else {
                         String[] hostport = protocol[1].split(":", 2);
                         if (hostport.length > 1) {
                             //TODO
                             try {
                                 Socket req = new Socket(hostport[0], (int)Integer.valueOf(hostport[1]));
-                                Pipe.socket = req;
-                                Pipe.input = req.getInputStream();
-                                Pipe.output = req.getOutputStream();
+                                pipe.socket = req;
+                                pipe.input = req.getInputStream();
+                                pipe.output = req.getOutputStream();
                             } catch (Exception e) {
-                                stack.push((Number)BigInteger.valueOf(-1));
-                                return Pipe;
+                                push(new Number(-1));
+                                relay(pipe);
+                                return;
                             }
-                            stack.push((Number)BigInteger.valueOf(0));
-                            return Pipe;
+                            push(new Number(0));
+                           	relay(pipe);
+                           	return;
                         }
                     }
             }
@@ -518,30 +545,30 @@ public class Stack {
         File file = new File(path);
 
         if (file.exists()) {
-            stack.push((Number)BigInteger.valueOf(0));
             try {
-                Pipe.input = new FileInputStream(file);
-                Pipe.output = new FileOutputStream(file);
+                pipe.input = new FileInputStream(file);
+                pipe.output = new FileOutputStream(file, true);
             }catch(Exception e){
-
             }
-            return Pipe;
+            push(new Number(0));
+            relay(pipe);
+            return;
         }
-        stack.push((Number)BigInteger.valueOf(-1));
-        return Pipe;
+        push(new Number(-1));
+        relay(pipe);
     }
 
-    static void info (Stack s) {
+    void info () {
         String request = "";
         String variable = "";
         Array result = new Array();
 
-        Pipe file = s.take();
-        Array text = s.grab();
+        Pipe file = take();
+        Array text = grab();
 
         for (int i = 0; i < text.size().intValue(); i++) {
-            if (text.index(BigInteger.valueOf(i)) != null) {
-                int c = text.index(BigInteger.valueOf(i)).intValue();
+            if (text.index(new Number(i)) != null) {
+                int c = text.index(new Number(i)).intValue();
                 request += (char)(c);
             }
         }
@@ -554,75 +581,101 @@ public class Stack {
         }
 
         for (int i = 0; i < variable.length(); i++) {
-            result.push((Number)BigInteger.valueOf(variable.charAt(i)));
+            result.push(new Number(variable.charAt(i)));
         }
-        s.share(result);
+        share(result);
     }
 
-    public static class Number extends BigInteger {
+    public static class Number {
+        BigInteger a;
+
         public Number() {
-            super("0");
+            a = BigInteger.ZERO;
         }
 
         public Number(int n) {
-            super(String.valueOf(n));
+            a = BigInteger.valueOf(n);
+        }
+
+        public Number(BigInteger n) {
+            a = n;
+        }
+
+        public int compareTo(Number b) {
+            return a.compareTo(b.a);
+        }
+
+        public int intValue() {
+            return a.intValue();
         }
 
         //These functions can be inlined. Only here for reference.
         Number slt(Number b) {
-            return compareTo(b) == -1 ? (Number)ONE : (Number)ZERO;
+            return new Number(compareTo(b) == -1 ? BigInteger.ONE : BigInteger.ZERO);
         }
 
         Number seq(Number b) {
-            return compareTo(b) == 0 ? (Number)ONE : (Number)ZERO;
+            return new Number(compareTo(b) == 0 ? BigInteger.ONE : BigInteger.ZERO);
         }
 
         Number sge(Number b) {
-            return compareTo(b) >= 0 ? (Number)ONE : (Number)ZERO;
+            return new Number(compareTo(b) >= 0 ? BigInteger.ONE : BigInteger.ZERO);
         }
 
         Number sgt(Number b) {
-            return compareTo(b) == 1 ? (Number)ONE : (Number)ZERO;
+            return new Number(compareTo(b) == 1 ? BigInteger.ONE : BigInteger.ZERO);
         }
 
         Number sne(Number b) {
-            return compareTo(b) != 0 ? (Number)ONE : (Number)ZERO;
+            return new Number(compareTo(b) != 0 ? BigInteger.ONE : BigInteger.ZERO);
         }
 
         Number sle(Number b) {
-            return compareTo(b) <= 0 ? (Number)ONE : (Number)ZERO;
+            return new Number(compareTo(b) <= 0 ? BigInteger.ONE : BigInteger.ZERO);
+        }
+
+        Number add(Number b) {
+            return new Number(a.add(b.a));
+        }
+
+        Number sub(Number b) {
+            return new Number(a.subtract(b.a));
+        }
+
+        Number mod(Number b) {
+            return new Number(a.mod(b.a));
         }
 
         Number div(Number b) {
             try {
-                return (Number)divide(b);
+                return new Number(a.divide(b.a));
             } catch (Exception e) {
-                if (compareTo(Number.valueOf(0)) == 0) {
+                if (compareTo(new Number(0)) == 0) {
                     SecureRandom srand = new SecureRandom();
                     return new Number(srand.nextInt(255)+1);
                 } else {
-                    return (Number)ZERO;
+                    return new Number(BigInteger.ZERO);
                 }
             }
         }
 
-        Number mul(BigInteger b) {
+        Number mul(Number b) {
             if (intValue() == 0 && b.intValue() == 0) {
                 SecureRandom srand = new SecureRandom();
                 return new Number(srand.nextInt(255)+1);
             }
-            return (Number)multiply(b);
+            return new Number(a.multiply(b.a));
         }
 
         Number pow(Number b) {
             if (intValue() == 0) {
-                if (b.mod(Number.valueOf(2)).intValue() != 0) {
+                if (b.mod(new Number(2)).intValue() != 0) {
                     SecureRandom srand = new SecureRandom();
                     return new Number(srand.nextInt(255)+1);
                 }
-                return (Number)ZERO;
+                return new Number(BigInteger.ZERO);
             }
-            return (Number)pow(b.intValue());
+            return new Number(a.pow(b.intValue()));
         }
     }
 
@@ -637,6 +690,24 @@ public class Stack {
         //Types of pipes.
         File file;
         Socket socket;
+        
+        Method method;
+        
+        public Pipe() {
+        }
+        
+        
+        public Pipe(Method m) {
+        	method = m;
+        }
+        
+        void exe(Stack stack) {
+        	try {
+        		method.invoke(null, stack); 
+        	} catch (Exception e) {  
+        		throw new RuntimeException(e);
+        	}
+        }
 
         void close() {
             try {
@@ -728,23 +799,23 @@ public class Stack {
         public String String() {
             String name = "";
             for (int i = 0; i < size().intValue(); i++) {
-                if (index(BigInteger.valueOf(i)) != null) {
-                    int c = index(BigInteger.valueOf(i)).intValue();
+                if (index(new Number(i)) != null) {
+                    int c = index(new Number(i)).intValue();
                     name += (char)(c);
                 }
             }
             return name;
         }
 
-        BigInteger pop() {
+        Number pop() {
             return List.remove(List.size()-1);
         }
 
-        BigInteger size() {
-            return BigInteger.valueOf(List.size());
+        Number size() {
+            return new Number(List.size());
         }
 
-        BigInteger index(BigInteger n) {
+        Number index(Number n) {
             return List.get(n.intValue());
         }
 
