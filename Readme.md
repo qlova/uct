@@ -32,9 +32,8 @@ It may not support quantum computers yet but it can still suit your non-quantum 
 The only data types in Universal Assembly are:
 
 	* Numbers
-	* Strings (of Numbers)
-	* Input & Output
-	* Functions
+	* Arrays
+	* Pipes
 
 The numbers have a strange property of being unbinded.
 This means they can contain any finite +/- value or zero.
@@ -50,7 +49,7 @@ In order to be more useful as a language Universal Assembly has some experimenta
 
 **I/O**
 This will be a officially supported feature of Universal Assembly.
-I/O allows file system access and manipulating file registers.
+I/O allows file system access and manipulating files through pipes.
 
 **Threading**
 With the fork instruction, new threads can be created, the thread communication protocol is still in design.
@@ -63,13 +62,18 @@ An extension of I/O, networking will enable reading and writing of various inter
 
 These are the languages available as a target.
 The table also shows experimental feature support.
+These are the official supported lanuages for development and testing.
 
 | Language |  I/O  | Networking | Threading |
 |----------|-------|------------|-----------|
 |Go		   |  YES  |    YES     |    YES    |
+|Java	   |  YES  |    YES     |    YES    |
+|Python	   |  YES  |    YES     |    YES    |
+
+These targets are currently not enabled, they have been in the past and will be added again in a future release.
+
+| Language |  I/O  | Networking | Threading |
 |Bash	   |  SOME |     NO     |    NO     |
-|Python	   |  YES  |     NO     |    NO     |
-|Java	   |  SOME |    YES     |    YES    |
 |Ruby	   |  SOME |     NO     |    NO     |
 |C#		   |  SOME |     NO     |    NO     |
 |Lua       |  SOME |     NO     |    NO     |
@@ -95,12 +99,12 @@ go get github.com/qlova/uct
 
 #Hello World
 ```u
-		STRINGDATA helloworld "Hello World\n"
+		DATA helloworld "Hello World\n"
 
 		# Prints "Hello World"
-		ROUTINE
-			PUSHSTRING helloworld
+		SOFTWARE
+			SHARE helloworld
 			STDOUT
-		END
+		EXIT
 ```
 
