@@ -73,6 +73,7 @@ These are the official supported lanuages for development and testing.
 These targets are currently not enabled, they have been in the past and will be added again in a future release.
 
 | Language |  I/O  | Networking | Threading |
+|----------|-------|------------|-----------|
 |Bash	   |  SOME |     NO     |    NO     |
 |Ruby	   |  SOME |     NO     |    NO     |
 |C#		   |  SOME |     NO     |    NO     |
