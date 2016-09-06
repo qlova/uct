@@ -5,7 +5,10 @@ This document will go through the available commands in uct assembly.
 SOFTWARE/EXIT
 =======
 	This is the entrypoint of your application. The close command will exit the software.
-	SOFTWARE must be followed at some point by EXIT
+	SOFTWARE must be followed at some point by EXIT.
+	
+	Your writing software, so all software needs a beginning and an end.
+	The Software is a beginning and the Exit is an end. An Exit is where the software will close.
 	
 	example:
 		
@@ -19,6 +22,8 @@ FUNCTION
 	The function command allows you to define functions.
 	FUNCTION must be followed at some point by RETURN.
 	
+	A Function is a role or purpose of your software, with functions you can organise your software into different parts.
+	
 	example:
 		
 		FUNCTION name
@@ -30,6 +35,21 @@ HEAP
 	The heap is a heap of arrays.
 	
 	example:
+	
+		DATA array "12345"
+	
+		SOFTWARE
+		
+			SHARE array
+			PUSH 0
+			HEAP
+			POP address
+			
+			MUL address address -1
+			PUSH address
+			HEAP
+			GRAB samearray
+		EXIT
 		
 		
 PUT/PLACE/POP
