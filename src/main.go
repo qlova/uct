@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"errors"
 	"flag"
+	"strconv"
 )
 
 //Map of aliases, we store all replacements in this map.
@@ -304,6 +305,12 @@ func assemble(filename string) error {
 							token = strings.Replace(token, string(c), "_plus_", -1)
 							tokens[i] = token
 							v = true
+						case '-':
+							if _, err := strconv.Atoi(token); err != nil {
+								token = strings.Replace(token, string(c), "_minus_", -1)
+								tokens[i] = token
+								v = true
+							}
 						case '/':
 							token = strings.Replace(token, string(c), "_over_", -1)
 							tokens[i] = token

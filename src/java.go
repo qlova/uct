@@ -46,6 +46,7 @@ var JavaAssembly = Assemblable{
 	},
 
 	"NUMBER": is("new Stack.Number(%s)", 1),
+	"BIG": is("new Stack.Number(%s)", 1),
 	"SIZE":   is("%s.size()", 1),
 	"STRING": is("new Stack.Array(%s)", 1),
 	"ERRORS":  is("stack.ERROR", 1),
@@ -75,9 +76,9 @@ var JavaAssembly = Assemblable{
 		},
 	},
 	
-	"SCOPE": is(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Stack.Pipe((new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%v", cArg)))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, 1),
+	"SCOPE": is(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Stack.Pipe((new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%s", cArg)))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, 1),
 	
-	"EXE": is("%v.exe(stack);", 1),
+	"EXE": is("%s.exe(stack);", 1),
 
 	"PUSH": is("stack.push(%s);", 1),
 	"PULL": is("Stack.Number %s = stack.pull();", 1),
@@ -87,7 +88,7 @@ var JavaAssembly = Assemblable{
 	"PLACE": is("stack.place(%s);", 1),
 
 	"ARRAY":  is("Stack.Array %s = stack.array();", 1),
-	"RENAME": is("%s = stack.ActiveArray", 1),
+	"RENAME": is("%s = stack.ActiveArray;", 1),
 
 	"SHARE": is("stack.share(%s);", 1),
 	"GRAB":  is("Stack.Array %s = stack.grab();", 1),
@@ -107,6 +108,7 @@ var JavaAssembly = Assemblable{
 	"IN":     is("stack.in();"),
 	"STDOUT": is("stack.stdout();"),
 	"STDIN":  is("stack.stdin();"),
+	"HEAP":   is("stack.heap();"),
 
 	"CLOSE": is("%s.close();", 1),
 
@@ -114,7 +116,7 @@ var JavaAssembly = Assemblable{
 	"BREAK":  is("break;"),
 	"REPEAT": is("}", 0, -1, -1),
 
-	"IF":   is("if (%v.compareTo(new Stack.Number(0)) != 0 ) {", 1, 1),
+	"IF":   is("if (%s.compareTo(new Stack.Number(0)) != 0 ) {", 1, 1),
 	"ELSE": is("} else {", 0, 0, -1),
 	"END":  is("}", 0, -1, -1),
 
@@ -143,11 +145,12 @@ var JavaAssembly = Assemblable{
 
 func JavaScope(args []string) string {
 		filename := JavaAssembly["NAME"].Data
-		return fmt.Sprintf(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Pipe(new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%v", cArg))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, filename, args[0])
+		return fmt.Sprintf(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Pipe(new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%s", cArg))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, filename, args[0])
 }
 
 //Edit this in a Java IDE.
 const JavaFile = `
+
 //Compiled to Java with UCT (Universal Code Translator)
 
 //Import java libraries.
@@ -175,14 +178,16 @@ import java.util.concurrent.Executors;
 // It also holds the ERROR variable for the current thread.
 // The currently active array is stored as ActiveArray.
 public class Stack {
-    Array 			Numbers;
-    ArrayArray 		Arrays;
-    PipeArray 		Pipes;
+    Array 				Numbers;
+    ArrayArray 			Arrays;
+    PipeArray 			Pipes;
 
-    Number 			ERROR;
+    Number 				ERROR;
 
-    Array			ActiveArray;
-    Array			Heap;
+    Array				ActiveArray;
+    ArrayArray			Heap;
+    ArrayList<Integer>	HeapRoom;
+    
 
     //This hashtable keeps track of Servers currently listening on the specified port.
     static Hashtable<String, ServerSocket> Networks_In = new Hashtable<String, ServerSocket>();
@@ -200,7 +205,8 @@ public class Stack {
         Pipes 		    = new PipeArray();
         ERROR 			= new Number();
 
-        Heap			= new Array();
+        Heap			= new ArrayArray();
+        HeapRoom		= new ArrayList<Integer>();
     }
 
     //This returns a copy of a stack which can be used by another thread.
@@ -284,6 +290,29 @@ public class Stack {
     Number pull() {
         return Numbers.pop();
     }
+    
+    void heap() {
+    	Number address = pull();
+	
+		if (address.intValue() == 0) {
+			if (HeapRoom.size() > 0) {
+				Integer address2 = HeapRoom.remove(HeapRoom.size()-1);
+				
+				Heap.List.set(((address2)%(Heap.List.size()+1)-1),  grab());
+				push(new Number(address2));
+			} else {
+				Heap.push(grab());
+				push(Heap.size());
+			}
+			
+		} else if (address.intValue() > 0) {
+			share(Heap.List.get((address.intValue()%(Heap.List.size()+1))-1));
+			
+		} else if (address.intValue() < 0) {
+			Heap.List.set(((-address.intValue())%(Heap.List.size()+1)-1),  null);
+			HeapRoom.add(-address.intValue());
+		}
+    }
 
     void stdout() {
         Array text = grab();
@@ -297,19 +326,72 @@ public class Stack {
 
     void stdin() {
         Number length = pull();
-        for (int i = 0; i < length.intValue(); i++) {
-            try {
-                int c = System.in.read();
-                if (c == -1) {
-                    push(new Number(-1000));
-                    return;
-                }
-                push(new Number(c));
-            }catch(Exception e){
-                push(new Number(-1000));
-                return;
-            }
+        
+        //This is the mode we use.
+        // >0 is number of bytes to read.
+        // <0 is character to read.
+        // 0 is read a line.
+        if (length.compareTo(new Number(0)) == 0) {
+        
+        	byte[] b = new byte[1];
+        	
+        	String input = "";
+        	
+        	while (true) {
+        		try {
+        			int n = System.in.read(b);
+        		} catch (Exception e) {
+        			ERROR = new Number(-1);
+        			share(new Array(input));
+        			return;
+        		}
+        		if (b[0] == '\n') {
+        			share(new Array(input));
+        			return;
+        		}
+        		input += ((char)(b[0]));
+        	}
+        	
+        	
+        } else if (length.compareTo(new Number(0)) == -1)  {
+        
+       		byte[] b = new byte[1];
+        	
+        	String input = "";
+        	
+        	while (true) {
+        		try {
+        			int n = System.in.read(b);
+        		} catch (Exception e) {
+        			ERROR = new Number(-1);
+        			share(new Array(input));
+        			return;
+        		}
+        		if (b[0] == -length.intValue()) {
+        			share(new Array(input));
+        			return;
+        		}
+        		input += ((char)(b[0]));
+        	}
+        
+        
+        } else { //length is > 0
+        	
+        	
+        	byte[] b = new byte[length.intValue()];
+        	
+    		try {
+    			int n = System.in.read(b);
+    		} catch (Exception e) {
+    			ERROR = new Number(-1);
+    			share(new Array(b));
+    			return;
+    		}
+        	
+			 share(new Array(b));
+			 return;
         }
+       
     }
 
     void in() {
@@ -600,6 +682,10 @@ public class Stack {
         public Number(BigInteger n) {
             a = n;
         }
+        
+        public Number(String s) {
+            a = new BigInteger(s);
+        }
 
         public int compareTo(Number b) {
             return a.compareTo(b.a);
@@ -793,6 +879,13 @@ public class Stack {
             List = new ArrayList<Number>();
             for (int i = 0; i < s.length(); ++i) {
                 List.add(new Number(s.charAt(i)));
+            }
+        }
+        
+        public Array(byte[] s) {
+            List = new ArrayList<Number>();
+            for (int i = 0; i < s.length; ++i) {
+                List.add(new Number(s[i]));
             }
         }
 

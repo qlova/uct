@@ -1,45 +1,619 @@
 package main
 
-import "errors"
 import "flag"
-import "strings"
-import "strconv"
 
-//Go flag.
+var GoReserved = []string{
+	"break",        "default",      "func",         "interface",    "select",
+	"case",         "defer",        "go",           "map",          "struct",
+	"chan",         "else",         "goto",         "package",      "switch",
+	"const",        "fallthrough",  "if",           "range",        "type",
+	"continue",     "for",          "import",       "return",       "var",
+	"bool",			"byte", 		"len", 			"open", 		"file", 
+	"close", 		"load", 		"copy",
+}
+
+//This is the Java compiler for uct.
 var Go bool
+
 func init() {
 	flag.BoolVar(&Go, "go", false, "Target Go")
+
+	RegisterAssembler(GoAssembly, &Go, "go", "//")
+
+	for _, word := range GoReserved {
+		GoAssembly[word] = Reserved()
+	}
+}
+
+var GoAssembly = Assemblable{
+	//Special commands.
+	"HEADER": Instruction{
+		Data:   "package main",
+		Args: 1,
+	},
+
+	"FOOTER": Instruction{},
+
+	"FILE": Instruction{
+		Data: GoFile,
+		Path: "/Stack.go",
+	},
+
+	"NUMBER": is("NewNumber(%s)", 1),
+	"BIG": 	is("BigInt(`%s`)", 1),
+	"SIZE":   is("%s.Len()", 1),
+	"STRING": is("NewStringArray(%s)", 1),
+	"ERRORS":  is("stack.ERROR", 1),
+
+	"SOFTWARE": Instruction{
+		Data:   "func main() { stack := &Stack{}; stack.Init();",
+		Indent: 1,
+	},
+	"EXIT": Instruction{
+		Indented:    1,
+		Data:        "}\n",
+		Indent:      -1,
+		Indentation: -1,
+		Else: &Instruction{
+			Data: "os.Exit(stack.ERROR.ToInt())",
+		},
+	},
+
+	"FUNCTION": is("func %s(stack *Stack) {", 1, 1),
+	"RETURN": Instruction{
+		Indented:    1,
+		Data:        "}\n",
+		Indent:      -1,
+		Indentation: -1,
+		Else: &Instruction{
+			Data: "return",
+		},
+	},
 	
-	RegisterAssembler(new(GoAssembler), &Go, "go", "//")
+	"SCOPE": is(`stack.Relay(Pipe{Function:%s})`, 1),
+	
+	"EXE": is("%s.Exe(stack)", 1),
+
+	"PUSH": is("stack.Push(%s)", 1),
+	"PULL": is("%s := stack.Pull(); %s.Init()", 1),
+
+	"PUT":   is("stack.Put(%s)", 1),
+	"POP":   is("%s := stack.Pop()", 1),
+	"PLACE": is("stack.ActiveArray = &%s", 1),
+	"ARRAY":  is("var %s Array; stack.ActiveArray = &%s", 1),
+	"RENAME": is("%s = *stack.ActiveArray", 1),
+
+	"SHARE": is("stack.Share(%s)", 1),
+	"GRAB":  is("%s := stack.Grab(); %s.Init()", 1),
+
+	"RELAY": is("stack.Relay(%s)", 1),
+	"TAKE":  is("%s := stack.Take(); %s.Init()", 1),
+
+	"GET": is("%s := stack.Get()", 1),
+	"SET": is("stack.Set(%s)", 1),
+
+	"VAR": is("var %s Number", 1),
+
+	"OPEN":   is("stack.Open()"),
+	"LOAD":   is("stack.Load()"),
+	"OUT":    is("stack.Out()"),
+	"STAT":   is("stack.Info()"),
+	"IN":     is("stack.In()"),
+	"STDOUT": is("stack.Stdout()"),
+	"STDIN":  is("stack.Stdin()"),
+	"HEAP":  is("stack.Heap()"),
+
+	"CLOSE": is("%s.Close()", 1),
+
+	"LOOP":   is("for {", 0, 1),
+	"BREAK":  is("break"),
+	"REPEAT": is("}", 0, -1, -1),
+
+	"IF":   is("if %s.True()  {", 1, 1),
+	"ELSE": is("} else {", 0, 0, -1),
+	"END":  is("}", 0, -1, -1),
+
+	"RUN":  is("%s(stack)", 1),
+	"DATA": is("var %s Array = %s;", 2),
+
+	"FORK": is("go %s(stack.Copy())\n", 1),
+
+	"ADD": is("%s.Add(%s, %s)", 3),
+	"SUB": is("%s.Sub(%s, %s)", 3),
+	"MUL": is("%s.Mul(%s, %s)", 3),
+	"DIV": is("%s.Div(%s, %s)", 3),
+	"MOD": is("%s.Mod(%s, %s)", 3),
+	"POW": is("%s.Pow(%s, %s)", 3),
+
+	"SLT": is("%s = %s.Slt(%s)", 3),
+	"SEQ": is("%s = %s.Seq(%s)", 3),
+	"SGE": is("%s = %s.Sge(%s)", 3),
+	"SGT": is("%s = %s.Sgt(%s)", 3),
+	"SNE": is("%s = %s.Sne(%s)", 3),
+	"SLE": is("%s = %s.Sle(%s)", 3),
+
+	"JOIN": is("%s = %s.Join(%s);", 3),
+	"ERROR": is("stack.ERROR = %s;", 1),
 }
 
-type GoAssembler struct {
-	Indentation int
-}
-
-func (g *GoAssembler) SetFileName(s string) {
-
-}
-
-func (g *GoAssembler) Header() []byte {
-	return []byte(
-	`
+//Edit this in a Java IDE.
+const GoFile = `
+//Compiled to Go with UCT (Universal Code Translator)
 package main
 
 import "math/big"
 import "os"
 import "io"
-import "fmt"
 import "crypto/rand"
 import "net"
 import "strings"
+import "strconv"
+import "bufio"
 
-type AnyInt struct {
+var Networks_In = make(map[string]net.Listener)
+
+//This is the Go stack implementation.
+// It holds arrays for the 3 types:
+//		Numbers
+//		Arrays
+//		Pipes
+//
+// It also holds the ERROR variable for the current thread.
+// The currently active array is stored as ActiveArray.
+type Stack struct {
+	Numbers Array
+	Arrays 	[]Array
+	Pipes	[]Pipe
+	
+	ERROR Number
+	ActiveArray *Array
+	TheHeap []Array;
+	HeapRoom []int
+}
+
+func (stack *Stack) Copy() (n *Stack) {
+	n = new(Stack)
+	n.Numbers = Array{}
+	n.Numbers.Small = make([]byte, len(stack.Numbers.Small))
+	copy(n.Numbers.Small, stack.Numbers.Small)
+	n.Numbers.Big = make([]Number, len(stack.Numbers.Big))
+	copy(n.Numbers.Big, stack.Numbers.Big)
+	
+	n.Arrays = make([]Array, len(stack.Arrays))
+	for i := range stack.Arrays {
+		n.Arrays[i] = Array{}
+		n.Arrays[i].Small = make([]byte, len(stack.Arrays[i].Small))
+		copy(n.Arrays[i].Small, stack.Arrays[i].Small)
+		
+		n.Arrays[i].Big = make([]Number, len(stack.Arrays[i].Big))
+		copy(n.Arrays[i].Big, stack.Arrays[i].Big)
+	}
+	
+	n.Pipes = make([]Pipe, len(stack.Pipes))
+	copy(n.Pipes, stack.Pipes)
+	
+	return
+}
+
+func (stack *Stack) Array() Array {
+	var array Array
+	stack.ActiveArray = &array
+	return array
+}
+
+func (z *Stack) Init() {
+
+}
+
+func (stack *Stack) Share(array Array) {
+	stack.Arrays = append(stack.Arrays, array)
+}
+func (stack *Stack) Grab() (array Array) {
+	array = stack.Arrays[len(stack.Arrays)-1]
+	stack.Arrays = stack.Arrays[:len(stack.Arrays)-1]
+	return
+}
+
+func (stack *Stack) Relay(pipe Pipe) {
+	stack.Pipes = append(stack.Pipes, pipe)
+}
+func (stack *Stack) Take() (pipe Pipe) {
+	pipe = stack.Pipes[len(stack.Pipes)-1]
+	stack.Pipes = stack.Pipes[:len(stack.Pipes)-1]
+	return
+}
+
+func (stack *Stack) Push(number Number) {
+	if number.Int == nil && number.Small < 256 && number.Small >= 0 && stack.Numbers.Big == nil {
+		stack.Numbers.Small = append(stack.Numbers.Small, byte(number.Small))
+	} else {
+		stack.Numbers.Grow()
+		stack.Numbers.Big = append(stack.Numbers.Big, number)
+	}
+}
+func (stack *Stack) Pull() (number Number) {
+	if stack.Numbers.Big == nil {
+		number.Small = int64(stack.Numbers.Small[len(stack.Numbers.Small)-1])
+		stack.Numbers.Small = stack.Numbers.Small[:len(stack.Numbers.Small)-1]
+	} else {
+		stack.Numbers.Grow()
+		number = stack.Numbers.Big[len(stack.Numbers.Big)-1]
+		stack.Numbers.Big = stack.Numbers.Big[:len(stack.Numbers.Big)-1]
+	}
+	return
+}
+
+func (stack *Stack) Heap() {
+	address := stack.Pull()
+	
+	switch {
+		case address.Small == 0:
+			if len(stack.HeapRoom) > 0 {
+				address := stack.HeapRoom[len(stack.HeapRoom)-1]
+				stack.HeapRoom = stack.HeapRoom[:len(stack.HeapRoom)-1]
+				
+				stack.TheHeap[(address%(len(stack.TheHeap)+1))-1] = stack.Grab()
+				stack.Push(NewNumber(address))
+				
+			} else {
+				stack.TheHeap = append(stack.TheHeap, stack.Grab())
+				stack.Push(NewNumber(len(stack.TheHeap)))
+			}
+			
+		case address.Small > 0:
+			stack.Share(stack.TheHeap[(int(address.Small)%(len(stack.TheHeap)+1))-1])
+			
+		case address.Small < 0:
+			stack.TheHeap[(-int(address.Small))%(len(stack.TheHeap)+1)-1] = Array{}
+			stack.HeapRoom = append(stack.HeapRoom, -int(address.Small))
+	}
+}
+
+
+func (stack *Stack) Put(number Number) {
+	var array = (*stack.ActiveArray)
+	if number.Int == nil && number.Small < 256  && number.Small >= 0 && array.Big == nil {
+		(*stack.ActiveArray).Small = append(array.Small, byte(number.Small))
+	} else {
+		(*stack.ActiveArray).Grow()
+		(*stack.ActiveArray).Big = append(array.Big, number)
+	}
+}
+func (stack *Stack) Pop() (number Number) {
+	var array = (*stack.ActiveArray)
+	if array.Big == nil {
+		number.Small = int64(array.Small[len(array.Small)-1])
+		(*stack.ActiveArray).Small = array.Small[:len(array.Small)-1]
+	} else {
+		array.Grow()
+		number = array.Big[len(array.Big)-1]
+		(*stack.ActiveArray).Big = array.Big[:len(array.Big)-1]
+	}
+	return
+}
+
+func (stack *Stack) Place(array Array) {
+	stack.ActiveArray = &array
+}
+func (stack *Stack) Get() (number Number) {
+	var array = (*stack.ActiveArray)
+	var index Number
+	
+	if array.Big == nil {
+		index.Mod(stack.Pull(), NewNumber(len(array.Small)))
+		number = NewNumber(int(array.Small[index.ToInt()]))
+	} else {
+		index.Mod(stack.Pull(), NewNumber(len(array.Big)))
+		number = array.Big[index.ToInt()]
+	}
+	return
+}
+func (stack *Stack) Set(number Number) {
+	var array = (*stack.ActiveArray)
+	var index Number
+	
+	if number.Int == nil && array.Big == nil && number.Small < 256  && number.Small >= 0 {
+		index.Mod(stack.Pull(), NewNumber(len((*stack.ActiveArray).Small)))
+		(*stack.ActiveArray).Small[index.ToInt()] = byte(number.Small)
+	} else {
+		(*stack.ActiveArray).Grow()
+		index.Mod(stack.Pull(), NewNumber(len((*stack.ActiveArray).Big)))
+		(*stack.ActiveArray).Big[index.ToInt()] = number
+	}
+}
+
+func (stack *Stack) Load() {
+	var name string
+	var variable string
+	var result = stack.Array()
+	var err error
+	
+	text := stack.Grab()
+	
+	if text.Index(0).ToInt() == '$' && text.Len().Small > 1 {
+	
+		for i := 0; i < int(text.Len().Small); i++ {
+			if i == 0 {
+				continue
+			}
+			name += string(rune(text.Index(i).ToInt()))
+		}
+		variable = os.Getenv(name)
+	} else {
+	
+		name = text.String()
+		
+		protocol := strings.SplitN(name, "://", 2)
+		if len(protocol) > 1 {
+			switch protocol[0] {
+				case "tcp":
+					listener, err := net.Listen("tcp", ":"+protocol[1])
+					_, variable, _ = net.SplitHostPort(listener.Addr().String())
+					if protocol[1] == "0" {
+						Networks_In[variable] = listener
+					} else {
+						Networks_In[protocol[1]] = listener
+					}
+					if err != nil {
+						stack.ERROR = NewNumber(1)
+					}
+				case "dns":
+					//This can be optimised. Check the string.
+					hosts, err := net.LookupAddr(protocol[1])
+					if err != nil {
+						hosts, err = net.LookupHost(protocol[1])
+						if err != nil {
+							stack.ERROR = NewNumber(1)
+						}
+					}
+					variable = strings.Join(hosts, " ")
+				default:
+					if err != nil {
+						stack.ERROR = NewNumber(1)
+					}
+			}
+		} else {
+	
+			if len(os.Args) > int(text.Index(0).ToInt()) {
+				variable = os.Args[text.Index(0).ToInt() ]
+			} 
+		}
+	}
+	
+	result.Small = []byte(variable)
+	stack.Share(result)
+}
+
+func (stack *Stack) Open() {
+	var err error
+	
+	text := stack.Grab()
+
+	var filename string = text.String()
+	
+	
+	var it Pipe
+	it.Name = filename
+	
+	protocol := strings.SplitN(filename, "://", 2)
+	if len(protocol) > 1 {
+		switch protocol[0] {
+		
+			case "tcp":
+				if listener, ok := Networks_In[protocol[1]]; ok {
+					
+					it.Connection, err = listener.Accept()
+					it.Pipe = it.Connection
+					if err != nil {
+						stack.Push(NewNumber(-1))
+						stack.Relay(it)
+						return
+					}
+					stack.Push(NewNumber(0))
+					stack.Relay(it)
+					return
+					
+				} else {
+					it.Connection, err = net.Dial("tcp", protocol[1])
+					it.Pipe = it.Connection
+					if err != nil {
+						stack.Push(NewNumber(-1))
+						stack.Relay(it)
+						return
+					}
+					stack.Push(NewNumber(0))
+					stack.Relay(it)
+					return
+				}
+		}
+	}
+
+	it.Pipe, err = os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0666)
+	if err == nil {
+		stack.Push(NewNumber(0))
+		stack.Relay(it)
+		return
+	}
+	if _, err = os.Stat(filename); err == nil {
+		stack.Push(NewNumber(0))
+		stack.Relay(it)
+		return
+	}
+	stack.Push(NewNumber(-1))
+	stack.Relay(it)
+	return
+}
+
+func (stack *Stack) Info() {
+	var request string
+	var variable string
+	
+	var result = stack.Array()
+
+	text := stack.Grab()
+	it := stack.Take()
+	
+	request = text.String()
+	
+	switch request {
+		case "address":
+			if it.Connection != nil {
+				variable = it.Connection.RemoteAddr().String()
+			}
+		case "ip":
+			if it.Connection != nil {
+				variable = it.Connection.RemoteAddr().(*net.TCPAddr).IP.String()
+			}
+		case "port":
+			if it.Connection != nil {
+				variable = strconv.Itoa(it.Connection.RemoteAddr().(*net.TCPAddr).Port)
+			}
+	}
+	
+	result.Small = []byte(variable)
+	stack.Share(result)
+}
+
+func (stack *Stack) Out() {
+	var err error
+	
+	text := stack.Grab()
+	f := stack.Take()
+	
+	if f.Pipe == nil {
+		if f.Name[len(f.Name)-1] == '/' {
+			i, err := os.Stat(f.Name)
+			if err == nil && i.IsDir() {
+				
+			} else {
+				err := os.Mkdir(f.Name, 0666)
+				if err != nil {
+					stack.Push(NewNumber(-1))
+					return
+				}
+			}
+		} else {
+			f.Pipe, err = os.Create(f.Name)
+			if err != nil {
+				stack.Push(NewNumber(-1))
+				return
+			}
+		}
+	}
+	if int(text.Len().Small) == 0 {
+		stack.Push(NewNumber(0))
+		return
+	}
+	for i := 0; i < int(text.Len().Small); i++ {
+		v := text.Index(i)
+		if v.Int != nil {
+			_, err := f.Pipe.Write(v.Bytes())
+			if err != nil {
+				stack.Push(NewNumber(-1))
+				return
+			}
+		} else {
+			_, err := f.Pipe.Write([]byte{byte(v.Small)})
+			if err != nil {
+				stack.Push(NewNumber(-1))
+				return
+			}
+		}
+	} 
+	
+	stack.Push(NewNumber(0))
+}
+
+func (stack *Stack) Stdout() {
+	text := stack.Grab()
+	
+	if text.Big == nil {
+		os.Stdout.Write(text.Small)
+		return
+	}
+	
+	for i := 0; i < int(text.Len().Small); i++ {
+		v := text.Index(i)
+		if v.Int != nil {
+			os.Stdout.Write(v.Bytes())
+		} else {
+			os.Stdout.Write([]byte{byte(v.Small)})
+		}
+	} 
+}
+
+func (stack *Stack) In() {
+
+	length := stack.Pull()
+	f := stack.Take()
+	
+	
+	if f.Pipe == nil {
+		stack.Push(NewNumber(-1000))
+		return
+	}
+	var err error
+	var b []byte = make([]byte, int(length.ToInt()))
+	var n int
+	n, err = f.Pipe.Read(b)
+	if len(b) > 1 || n == 0 {
+		stack.Push(NewNumber(-1000))
+	}
+	if err != nil {
+		//println(err.Error())
+	}
+	for i:=n-1; i>=0; i-- {
+		stack.Push(NewNumber(int(b[i])))
+	}
+
+}
+
+var stdin_reader = bufio.NewReader(os.Stdin)
+
+func  (stack *Stack) Stdin() {
+	length := stack.Pull()
+	
+	switch {
+		case length.Small == 0:
+			
+			b, err := stdin_reader.ReadBytes('\n')
+			if err != nil || len(b) == 0 {
+				stack.Share(Array{})
+			}
+			stack.Share(Array{Small:b[:len(b)-1]})
+			
+		case length.Small > 0:
+		
+			var b []byte = make([]byte, int(length.ToInt()))
+			n, err := os.Stdin.Read(b)
+			if err != nil || n <= 0 {
+				stack.Share(Array{})
+			}
+			stack.Share(Array{Small:b})
+			
+		case length.Small < 0:
+			b, err := stdin_reader.ReadBytes(byte(-length.Small))
+			if err != nil || len(b) == 0 {
+				stack.Share(Array{})
+			}
+			stack.Share(Array{Small:b[:len(b)-1]})
+	}
+}
+
+type Number struct {
 	*big.Int
 	Small int64
 }
 
-func (z *AnyInt) Add(a, b AnyInt) {
+func (z *Number) Init() {
+
+}
+
+func NewNumber(n int) Number {
+	return Number{Small:int64(n)}
+}
+
+func (z *Number) Add(a, b Number) {
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
 		if !ca {
@@ -54,14 +628,14 @@ func (z *AnyInt) Add(a, b AnyInt) {
 				z.Int.Add(big.NewInt(a.Small), big.NewInt(b.Small))
 				return
 			}
-			*z = AnyInt{Small:a.Small+b.Small}
+			*z = Number{Small:a.Small+b.Small}
 		}
 	} else {
 		z.Int.Add(a.Int, b.Int)
 	}
 } 
 
-func (z *AnyInt) Sub(a, b AnyInt) {
+func (z *Number) Sub(a, b Number) {
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
 		if !ca {
@@ -76,18 +650,18 @@ func (z *AnyInt) Sub(a, b AnyInt) {
 				z.Int.Sub(big.NewInt(a.Small), big.NewInt(b.Small))
 				return
 			}
-			*z = AnyInt{Small:a.Small-b.Small}
+			*z = Number{Small:a.Small-b.Small}
 		}
 	} else {
 		z.Int.Sub(a.Int, b.Int)
 	}
 } 
 
-func (z *AnyInt) Mul(a, b AnyInt) {
-	if a.Int64() == 0 && b.Int64() == 0 {
+func (z *Number) Mul(a, b Number) {
+	if a.ToInt() == 0 && b.ToInt() == 0 {
 		var b []byte = []byte{1}
     	rand.Read(b)
-    	*z = AnyInt{Small:int64(b[0]+1)}
+    	*z = NewNumber(int(b[0]+1))
     	return
 	}
 	
@@ -98,7 +672,7 @@ func (z *AnyInt) Mul(a, b AnyInt) {
 		} else if !cb {
 			z.Int.Mul(big.NewInt(a.Small), b.Int)
 		} else {
-			*z = AnyInt{Small:a.Small*b.Small}
+			*z = Number{Small:a.Small*b.Small}
 			if (a.Small != 0 && z.Small / a.Small != b.Small) {
 				z.Int = big.NewInt(0)
 				z.Int.Mul(big.NewInt(a.Small), big.NewInt(b.Small))
@@ -111,16 +685,16 @@ func (z *AnyInt) Mul(a, b AnyInt) {
 
 var Zero_go = big.NewInt(0)
 
-func (z *AnyInt) Div(a, b AnyInt) {
+func (z *Number) Div(a, b Number) {
 	defer func() {
         if r := recover(); r != nil {
 		    if a.Small == 0 || a.Int != nil && a.Int.Cmp(Zero_go) == 0 {
 		    	var b []byte = []byte{1}
 		    	rand.Read(b)
-		    	*z = AnyInt{Small:int64(b[0]+1)}
+		    	*z =NewNumber(int(b[0]+1))
 		    	return
 		    }
-		   	*z = AnyInt{Small:0}
+		   	*z = NewNumber(0)
 		}
     }()
 	z.Int = big.NewInt(0)
@@ -135,14 +709,14 @@ func (z *AnyInt) Div(a, b AnyInt) {
 				z.Int.Div(big.NewInt(a.Small), big.NewInt(b.Small))
 				return
 			}
-			*z = AnyInt{Small:a.Small/b.Small}
+			*z = Number{Small:a.Small/b.Small}
 		}
 	} else {
 		z.Int.Div(a.Int, b.Int)
 	}
 } 
 
-func (z *AnyInt) Mod(a, b AnyInt) {
+func (z *Number) Mod(a, b Number) {
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
 		if !ca {
@@ -159,13 +733,13 @@ func (z *AnyInt) Mod(a, b AnyInt) {
 	}
 } 
 
-func (z *AnyInt) Pow(a, b AnyInt) {
-	if a.Int64() == 0 {
-		z.Mod(b, AnyInt{Small: 2})
-		if z.Int64() != 0 {
+func (z *Number) Pow(a, b Number) {
+	if a.ToInt() == 0 {
+		z.Mod(b, NewNumber(2))
+		if z.ToInt() != 0 {
 			var b []byte = []byte{1}
 	    	rand.Read(b)
-	    	*z = AnyInt{Small:int64(b[0])}
+	    	*z = NewNumber(int(b[0]))
 	    	return
 		}
 		z.Int = big.NewInt(0)
@@ -188,7 +762,91 @@ func (z *AnyInt) Pow(a, b AnyInt) {
 	}
 } 
 
-func (z AnyInt) If() bool {
+func (a Number) Slt(b Number) Number {
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			return NewNumber(__bool2int( a.Cmp(big.NewInt(b.Small)) == -1 ))
+		} else if !cb {
+			return NewNumber(__bool2int( big.NewInt(a.Small).Cmp(b.Int) == -1 ))
+		} else {
+			return NewNumber(__bool2int( a.Small < b.Small ))
+		}
+	} else {
+		return NewNumber(__bool2int( a.Cmp(b.Int) == -1 ))
+	}
+}
+
+func (a Number) Seq(b Number) Number {
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			return NewNumber(__bool2int( a.Cmp(big.NewInt(b.Small)) == 0 ))
+		} else if !cb {
+			return NewNumber(__bool2int( big.NewInt(a.Small).Cmp(b.Int) == 0 ))
+		} else {
+			return NewNumber(__bool2int( a.Small == b.Small ))
+		}
+	} else {
+		return NewNumber(__bool2int( a.Cmp(b.Int) == 0 ))
+	}
+}
+
+func (a Number) Sge(b Number) Number {
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			return NewNumber(__bool2int( a.Cmp(big.NewInt(b.Small)) >= 0 ))
+		} else if !cb {
+			return NewNumber(__bool2int( big.NewInt(a.Small).Cmp(b.Int) >= 0 ))
+		} else {
+			return NewNumber(__bool2int( a.Small >= b.Small ))
+		}
+	} else {
+		return NewNumber(__bool2int( a.Cmp(b.Int) >= 0 ))
+	}
+}
+
+func (a Number) Sle(b Number) Number {
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			return NewNumber(__bool2int( a.Cmp(big.NewInt(b.Small)) <= 0 ))
+		} else if !cb {
+			return NewNumber(__bool2int( big.NewInt(a.Small).Cmp(b.Int) <= 0 ))
+		} else {
+			return NewNumber(__bool2int( a.Small <= b.Small ))
+		}
+	} else {
+		return NewNumber(__bool2int( a.Cmp(b.Int) <= 0 ))
+	}
+}
+
+func (a Number) Sgt(b Number) Number {
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			return NewNumber(__bool2int( a.Cmp(big.NewInt(b.Small)) == 1 ))
+		} else if !cb {
+			return NewNumber(__bool2int( big.NewInt(a.Small).Cmp(b.Int) == 1 ))
+		} else {
+			return NewNumber(__bool2int( a.Small > b.Small ))
+		}
+	} else {
+		return NewNumber(__bool2int( a.Cmp(b.Int) == 1 ))
+	}
+}
+
+func (a Number) Sne(b Number) Number {
+	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
+		if !ca {
+			return NewNumber(__bool2int( a.Cmp(big.NewInt(b.Small)) != 0 ))
+		} else if !cb {
+			return NewNumber(__bool2int( big.NewInt(a.Small).Cmp(b.Int) != 0 ))
+		} else {
+			return NewNumber(__bool2int( a.Small != b.Small ))
+		}
+	} else {
+		return NewNumber(__bool2int( a.Cmp(b.Int) != 0 ))
+	}
+}
+
+func (z Number) True() bool {
 	if z.Int == nil {
 		if z.Small != 0 {
 			return true
@@ -198,724 +856,107 @@ func (z AnyInt) If() bool {
 	return z.Int.Cmp(big.NewInt(0)) != 0
 } 
 
-func (z AnyInt) Int64() int64 {
+func (z Number) ToInt() int {
 	if z.Int == nil {
-		return z.Small
+		return int(z.Small)
 	}
-	return z.Int.Int64()
+	return int(z.Int.Int64())
 } 
 
 
-func BigInt(text string) AnyInt {
-	n := AnyInt{Int:new(big.Int)}
-	fmt.Sscan(text, n)
-	return n
-}
-
-type String []AnyInt
-type StringString []String
-type Funcs []func(*Stack)
-type ITs []IT
-
-type IT struct {
+type Pipe struct {
 	Name string
 	
-	File io.ReadWriteCloser
+	Pipe io.ReadWriteCloser
 	Connection net.Conn
-}
-
-type Stack struct {
-	N String
-	N2 StringString
-	F Funcs
-	F2 ITs
 	
-	C chan AnyInt
-	P chan AnyInt
+	Function func(*Stack)
 }
 
-var ERROR AnyInt
+func (z *Pipe) Init() {
 
-func (s *Stack) copy() (n *Stack) {
-	n = new(Stack)
-	n.N = make(String, len(s.N))
-	copy(n.N, s.N)
-	n.N2 = make(StringString, len(s.N2))
-	for i := range s.N2 {
-		n.N2[i] = make(String, len(s.N2[i]))
-		copy(n.N2[i], s.N2[i])
+}
+
+func (pipe *Pipe) Exe(stack *Stack) {
+	pipe.Function(stack)
+}
+
+func (pipe *Pipe) Close() {
+	if pipe.Pipe != nil {
+		pipe.Pipe.Close()
 	}
-	n.F = make(Funcs, len(s.F))
-	copy(n.F, s.F)
-	n.F2 = make(ITs, len(s.F2))
-	copy(n.F2, s.F2)
-	
-	n.C = make(chan AnyInt, 20)
-	n.P = s.C
-	
-	return
 }
 
-
-func (s *String) push(n AnyInt) {
-	*s = append(*s, n)
+type Array struct {
+	Big []Number
+	Small []byte
 }
 
-func (p *String) pop() (n AnyInt) {
-	s := *p
-	n = s[len(s)-1]
-	s = s[:len(s)-1]
-	*p = s
-	return
+func (z *Array) Init() {
+
 }
 
-func (p *ITs) push(n IT) {
-	*p = append(*p, n)
+func (z *Array) Grow() {
+	if z.Big == nil {
+		z.Big = make([]Number, len(z.Small))
+		for i := range z.Small {
+			z.Big[i] = Number{Small:int64(z.Small[i])}
+		}
+	}
 }
 
-func (p *ITs)  pop() (n IT) {
-	s := *p
-	n = s[len(s)-1]
-	s = s[:len(s)-1]
-	*p = s
-	return
-}
-
-func (s *Funcs) push(n func(*Stack)) {
-	*s = append(*s, n)
-}
-
-func (p *Funcs) pop() (n func(*Stack)) {
-	s := *p
-	n = s[len(s)-1]
-	s = s[:len(s)-1]
-	*p = s
-	return
-}
-
-func (s *StringString) push(n String) {
-	*s = append(*s, n)
-}
-
-func (p *StringString) pop() (n String) {
-	s := *p
-	n = s[len(s)-1]
-	s = s[:len(s)-1]
-	*p = s
-	return
-}
-
-func (s *Stack) init() {
-	s.C = make(chan AnyInt, 20)
-}
-
-func (s *Stack) pushstring(n String) {
-	s.N2.push(n)
-}
-
-func (s *Stack) popstring() (n String) {
-	return s.N2.pop()
-}
-
-func (s *Stack) push(n AnyInt) {
-	if n.Int == nil {
-		s.N.push(n)
+func (z *Array) Index(n int) Number {
+	if z.Big == nil {
+		return Number{Small:int64(z.Small[n])}
 	} else {
-		s.N.push(AnyInt{Int:big.NewInt(0).Set(n.Int)})
+		return z.Big[n]
 	}
 }
 
-func (s *Stack) popfunc() (n func(*Stack)) {
-	return s.F.pop()
-}
-
-func (s *Stack) pushfunc(n func(*Stack)) {
-	s.F.push(n)
-}
-
-func (s *Stack) popit() (n IT) {
-	return s.F2.pop()
-}
-
-func (s *Stack) pushit(n IT) {
-	s.F2.push(n)
-}
-
-func (s *Stack) pop() (n AnyInt) {
-	return s.N.pop()
-}
-
-var Networks_In = make(map[string]net.Listener)
-
-func load(s *Stack) {
-	var name string
-	var variable string
-	var result String
-	var err error
-	
-	text := s.popstring()
-	
-	if text[0].Int64() == 36 && len(text) > 1 {
-	
-		for i, v := range text {
-			if i == 0 {
-				continue
-			}
-			name += string(rune(v.Int64()))
-		}
-		variable = os.Getenv(name)
+func (z *Array) Len() Number {
+	if z.Big == nil {
+		return Number{Small:int64(len(z.Small))}
 	} else {
-	
-		for _, v := range text {
-			name += string(rune(v.Int64()))
-		}
-		protocol := strings.SplitN(name, "://", 2)
-		if len(protocol) > 1 {
-			switch protocol[0] {
-				case "tcp":
-					listener, err := net.Listen("tcp", ":"+protocol[1])
-					_, variable, _ = net.SplitHostPort(listener.Addr().String())
-					if protocol[1] == "0" {
-						Networks_In[variable] = listener
-					} else {
-						Networks_In[protocol[1]] = listener
-					}
-					if err != nil {
-						ERROR = AnyInt{Small:int64(1)}
-					}
-				case "dns":
-					//This can be optimised. Check the string.
-					hosts, err := net.LookupAddr(protocol[1])
-					if err != nil {
-						hosts, err = net.LookupHost(protocol[1])
-						if err != nil {
-							ERROR = AnyInt{Small:int64(1)}
-						}
-					}
-					variable = strings.Join(hosts, " ")
-				default:
-					if err != nil {
-						ERROR = AnyInt{Small:int64(1)}
-					}
-			}
-		} else {
-	
-			if len(os.Args) > int(text[0].Int64()) {
-				variable = os.Args[text[0].Int64() ]
-			} 
-		}
+		return Number{Small:int64(len(z.Big))}
 	}
-	
-	for _, v := range variable {
-		result = append(result, AnyInt{Small:int64(v)})
-	}
-	s.pushstring(result)
 }
 
-func open(s *Stack) (f IT) {
-	var err error
-
-	var filename string
-	text := s.popstring()
-	for _, v := range text {
-		filename += string(rune(v.Int64()))
-	}
-	
-	
-	var it IT
-	it.Name = filename
-	
-	protocol := strings.SplitN(filename, "://", 2)
-	if len(protocol) > 1 {
-		switch protocol[0] {
-		
-			case "tcp":
-				if listener, ok := Networks_In[protocol[1]]; ok {
-					
-					it.Connection, err = listener.Accept()
-					it.File = it.Connection
-					if err != nil {
-						s.push(AnyInt{Int:big.NewInt(-1)})
-						return it
-					}
-					s.push(AnyInt{Int:big.NewInt(0)})
-					return it
-					
-				} else {
-					it.Connection, err = net.Dial("tcp", protocol[1])
-					it.File = it.Connection
-					if err != nil {
-						s.push(AnyInt{Int:big.NewInt(-1)})
-						return it
-					}
-					s.push(AnyInt{Int:big.NewInt(0)})
-					return it
-				}
-		}
-	}
-
-	it.File, err = os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0666)
-	if err == nil {
-		s.push(AnyInt{Int:big.NewInt(0)})
-		return it
-	}
-	if _, err = os.Stat(filename); err == nil {
-		s.push(AnyInt{Int:big.NewInt(0)})
-		return it
-	}
-	s.push(AnyInt{Int:big.NewInt(-1)})
-	return it
-}
-
-func info(s *Stack) {
-	var request string
-	var variable string
-	
-	var result String
-
-	text := s.popstring()
-	it := s.popit()
-	
-	for _, v := range text {
-		request += string(rune(v.Int64()))
-	}
-	
-	switch request {
-		case "address":
-			if it.Connection != nil {
-				variable = it.Connection.RemoteAddr().String()
-			}
-		case "ip":
-			if it.Connection != nil {
-				variable = strings.Split(it.Connection.RemoteAddr().String(), ":")[0]
-			}
-		case "port":
-			if it.Connection != nil {
-				variable = strings.Split(it.Connection.RemoteAddr().String(), ":")[1]
-			}
-	}
-	
-	for _, v := range variable {
-		result = append(result, AnyInt{Small:int64(v)})
-	}
-	s.pushstring(result)
-}
-
-func out(s *Stack, f IT) {
-	var err error
-	
-	text := s.popstring()
-	
-	if f.Name == "" {
-		for i:=0; i < len(text); i++ {
-			s.P <- text[i]
-		}
-	}
-	
-	if f.File == nil {
-		if f.Name[len(f.Name)-1] == '/' {
-			i, err := os.Stat(f.Name)
-			if err == nil && i.IsDir() {
-				
-			} else {
-				err := os.Mkdir(f.Name, 0666)
-				if err != nil {
-					s.push(AnyInt{Int:big.NewInt(-1)})
-					return
-				}
-			}
-		} else {
-			f.File, err = os.Create(f.Name)
-			if err != nil {
-				s.push(AnyInt{Int:big.NewInt(-1)})
-				return
-			}
-		}
-	}
-	if len(text) == 0 {
-		s.push(AnyInt{Int:big.NewInt(0)})
-		return
-	}
-	for _, v := range text {
-		if v.Int != nil {
-			_, err := f.File.Write(v.Bytes())
-			if err != nil {
-				s.push(AnyInt{Int:big.NewInt(-1)})
-				return
-			}
-		} else {
-			_, err := f.File.Write([]byte{byte(v.Small)})
-			if err != nil {
-				s.push(AnyInt{Int:big.NewInt(-1)})
-				return
-			}
-		}
-	} 
-	
-	s.push(AnyInt{Int:big.NewInt(0)})
-}
-
-func stdout(s *Stack) {
-	text := s.popstring()
-	for _, v := range text {
-		if v.Int != nil {
-			os.Stdout.Write(v.Bytes())
-		} else {
-			os.Stdout.Write([]byte{byte(v.Small)})
-		}
-	} 
-}
-
-func in(s *Stack, f IT) {
-
-	length := s.pop()
-	
-	if f.Name == "" {
-		for i:=int64(0); i < length.Small; i++ {
-			s.push(<-s.C)
-		}
-	}
-	
-	
-	if f.File == nil {
-		s.push(AnyInt{Int:big.NewInt(-1000)})
-		return
-	}
-	var b []byte = make([]byte, 1)
-	if length.Int != nil {
-		for i := big.NewInt(0); i.Cmp(length.Int) < 0; i.Add(i, big.NewInt(1)) {	
-			var n int
-			n, _ = f.File.Read(b)
-			if n == 0 {
-				s.push(AnyInt{Int:big.NewInt(-1000)})
-				return
-			}
-			s.push(AnyInt{ Small:int64(b[0]) })
-		}
+func (z *Array) String() string {
+	if z.Big == nil {
+		return string(z.Small)
 	} else {
-		for i := int64(0); i < length.Small; i++ {	
-			var n int
-			n, _ = f.File.Read(b)
-			if n == 0 {
-				s.push(AnyInt{Int:big.NewInt(-1000)})
-				return
-			}
-			s.push(AnyInt{Small:int64(b[0])})
+		var name string
+		for i := 0; i < int(z.Len().Small); i++ {
+			name += string(rune(z.Big[i].ToInt()))
 		}
+		return name
 	}
 }
 
-func stdin(s *Stack) {
-	length := s.pop()
-	var b []byte = make([]byte, 1)
-	var err error
-	if length.Int != nil {
-		for i := big.NewInt(0); i.Cmp(length.Int) < 0; i.Add(i, big.NewInt(1)) {	
-			var n int
-			for n == 0 {
-				n, err = os.Stdin.Read(b)
-				if err == io.EOF {
-					s.push(AnyInt{ Small:-1000})
-					return
-				}
-			}
-			s.push(AnyInt{ Small:int64(b[0]) })
-		}
-	} else {
-		for i := int64(0); i < length.Small; i++ {	
-			var n int
-			for n == 0 {
-				n, err = os.Stdin.Read(b)
-				if err == io.EOF {
-					s.push(AnyInt{ Small:-1000})
-					return
-				}
-			}
-			s.push(AnyInt{Small:int64(b[0])})
-		}
-	}
+func NewStringArray(s string) Array {
+	var result = Array{Small:[]byte(s)}
+	return result
 }
 
-func close(f IT) {
-	if f.File != nil {
-		f.File.Close()
+func (array *Array) Join(b Array) Array {
+	switch {
+		case array.Small != nil && b.Small != nil:
+			return Array{Small:append(array.Small, b.Small...)}
+			
+		case (array.Small != nil && b.Big != nil) || (array.Big != nil && b.Small != nil):
+			array.Grow()
+			b.Grow()
+			fallthrough
+		case array.Big != nil && b.Big != nil:
+			return Array{Big:append(array.Big, b.Big...)}
 	}
+	return Array{}
 }
 
-func __bool2int(b bool) int64 {
+func __bool2int(b bool) int {
 	if b {
 		return 1
 	}
 	return 0
 }
-
-func slt(a AnyInt, b AnyInt) AnyInt {
-	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
-		if !ca {
-			return AnyInt{Small:__bool2int( a.Cmp(big.NewInt(b.Small)) == -1 )}
-		} else if !cb {
-			return AnyInt{Small:__bool2int( big.NewInt(a.Small).Cmp(b.Int) == -1 )}
-		} else {
-			return AnyInt{Small:__bool2int( a.Small < b.Small )}
-		}
-	} else {
-		return AnyInt{Small:__bool2int( a.Cmp(b.Int) == -1 )}
-	}
-}
-
-func seq(a AnyInt, b AnyInt) AnyInt {
-	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
-		if !ca {
-			return AnyInt{Small:__bool2int( a.Cmp(big.NewInt(b.Small)) == 0 )}
-		} else if !cb {
-			return AnyInt{Small:__bool2int( big.NewInt(a.Small).Cmp(b.Int) == 0 )}
-		} else {
-			return AnyInt{Small:__bool2int( a.Small == b.Small )}
-		}
-	} else {
-		return AnyInt{Small:__bool2int( a.Cmp(b.Int) == 0 )}
-	}
-}
-
-func sge(a AnyInt, b AnyInt) AnyInt {
-	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
-		if !ca {
-			return AnyInt{Small:__bool2int( a.Cmp(big.NewInt(b.Small)) >= 0 )}
-		} else if !cb {
-			return AnyInt{Small:__bool2int( big.NewInt(a.Small).Cmp(b.Int) >= 0 )}
-		} else {
-			return AnyInt{Small:__bool2int( a.Small >= b.Small )}
-		}
-	} else {
-		return AnyInt{Small:__bool2int( a.Cmp(b.Int) >= 0 )}
-	}
-}
-
-func sle(a AnyInt, b AnyInt) AnyInt {
-	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
-		if !ca {
-			return AnyInt{Small:__bool2int( a.Cmp(big.NewInt(b.Small)) <= 0 )}
-		} else if !cb {
-			return AnyInt{Small:__bool2int( big.NewInt(a.Small).Cmp(b.Int) <= 0 )}
-		} else {
-			return AnyInt{Small:__bool2int( a.Small <= b.Small )}
-		}
-	} else {
-		return AnyInt{Small:__bool2int( a.Cmp(b.Int) <= 0 )}
-	}
-}
-
-func sgt(a AnyInt, b AnyInt) AnyInt {
-	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
-		if !ca {
-			return AnyInt{Small:__bool2int( a.Cmp(big.NewInt(b.Small)) == 1 )}
-		} else if !cb {
-			return AnyInt{Small:__bool2int( big.NewInt(a.Small).Cmp(b.Int) == 1 )}
-		} else {
-			return AnyInt{Small:__bool2int( a.Small > b.Small )}
-		}
-	} else {
-		return AnyInt{Small:__bool2int( a.Cmp(b.Int) == 1 )}
-	}
-}
-
-func sne(a AnyInt, b AnyInt) AnyInt {
-	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
-		if !ca {
-			return AnyInt{Small:__bool2int( a.Cmp(big.NewInt(b.Small)) != 0 )}
-		} else if !cb {
-			return AnyInt{Small:__bool2int( big.NewInt(a.Small).Cmp(b.Int) != 0 )}
-		} else {
-			return AnyInt{Small:__bool2int( a.Small != b.Small )}
-		}
-	} else {
-		return AnyInt{Small:__bool2int( a.Cmp(b.Int) != 0 )}
-	}
-}
-`)
-}
-
-func (g *GoAssembler) indt(n ...int) string {
-	if len(n) > 0 {
-		return strings.Repeat("\t", int(g.Indentation)+n[0])
-	} else {
-		return strings.Repeat("\t", int(g.Indentation))
-	}
-}
-
-func (g *GoAssembler) Assemble(command string, args []string) ([]byte, error) {
-	//Format argument expressions.
-	//var expression bool
-	for i, arg := range args {
-		if arg == "=" {
-			//expression = true
-			continue
-		}
-		if _, err := strconv.Atoi(arg); err == nil {
-			args[i] = "AnyInt{Small:"+arg+"}"
-			continue
-		} else if _, err := strconv.Atoi(string(arg[0])); err == nil {
-			args[i] = "BigInt(\""+arg+"\")"
-			continue
-		} else if arg[0] == '-' {
-			args[i] = "BigInt(\""+arg+"\")"
-			continue
-		}
-		if arg[0] == '#' {
-			args[i] = "AnyInt{Small:int64(len("+arg[1:]+"))}"
-		}
-		if arg[0] == '"' {
-			var newarg string
-			var j = i
-			arg = arg[1:]
-			
-			stringloop:
-			arg = strings.Replace(arg, "\\n", "\n", -1)
-			for _, v := range arg {
-				if v == '"' {
-					goto end
-				}
-				newarg += "AnyInt{Small:"+strconv.Itoa(int(v))+"},"
-			}
-			if len(arg) == 0 {
-				goto end
-			}
-			newarg += "AnyInt{Small:"+strconv.Itoa(int(' '))+"},"
-			j++
-			//println(arg)
-			arg = args[j]
-			goto stringloop
-			end:
-			//println(newarg)
-			args[i] = newarg
-		}
-		switch arg {
-			case "byte", "len", "open", "file", "close", "load", "bool", "copy":
-				args[i] = "u_"+args[i]
-		}
-	} 
-	switch command {
-		case "ROUTINE":
-			defer func() { g.Indentation++ }()
-			return []byte("func main() {\n\tvar STACK = new(Stack)\n\tSTACK.init()\n"), nil
-		case "SUBROUTINE":
-			defer func() { g.Indentation++ }()
-			return []byte("func "+args[0]+"(STACK *Stack) {\n"), nil
-		case "FUNC":
-			return []byte(g.indt()+args[0]+" := "+args[1]+" \n"), nil
-		case "EXE":
-			return []byte(g.indt()+args[0]+"(STACK) \n"), nil
-		case "FORK":
-			return []byte(g.indt()+"go "+args[0]+"(STACK.copy())\n"), nil
-		case "PUSH", "PUSHSTRING", "PUSHFUNC", "PUSHIT":
-			var name string
-			if command == "PUSHSTRING" {
-				name = "string"
-			} else if command == "PUSHFUNC" {
-				name = "func"
-			} else if command == "PUSHIT" {
-				name = "it"
-			}
-			if len(args) == 1 {
-				return []byte(g.indt()+"STACK.push"+name+"("+args[0]+")\n"), nil
-			} else {
-				return []byte(g.indt()+args[1]+".push("+args[0]+")\n"), nil
-			}
-		case "POP", "POPSTRING", "POPFUNC", "POPIT":
-			var name string
-			if command == "POPSTRING" {
-				name = "string"
-			} else if command == "POPFUNC" {
-				name = "func"
-			} else if command == "POPIT" {
-				name = "it"
-			}
-			if len(args) == 0 {
-				return []byte(g.indt()+"STACK.pop"+name+"()\n"), nil
-			} else if len(args) == 1 {
-				return []byte(g.indt()+args[0]+" := STACK.pop"+name+"()\n"), nil
-			} else {
-				return []byte(g.indt()+args[0]+" := "+args[1]+".pop()\n"), nil
-			}
-		case "INDEX":
-			return []byte(g.indt()+args[2]+" := "+args[0]+"["+args[1]+".Int64()]\n"), nil
-		case "SET":
-			return []byte(g.indt()+args[0]+"["+args[1]+".Int64()] = "+args[2]+"\n"), nil
-		case "VAR":
-			if len(args) == 1 {
-				return []byte(g.indt()+"var "+args[0]+" AnyInt \n"), nil
-			} else {
-				return []byte(g.indt()+"var "+args[0]+" = "+args[1]+" \n"), nil
-			}
-		case "STRING":
-			return []byte(g.indt()+"var "+args[0]+" String\n"), nil
-			
-		//IT stuff.
-		case "OPEN":
-			return []byte(g.indt()+"var "+args[0]+" IT = open(STACK)\n"), nil
-		case "OUT":
-			return []byte(g.indt()+"out(STACK, "+args[0]+")\n"), nil
-		case "INFO":
-			return []byte(g.indt()+"info(STACK)\n"), nil
-		case "IN":
-			return []byte(g.indt()+"in(STACK, "+args[0]+")\n"), nil
-		case "CLOSE":
-			return []byte(g.indt()+"close("+args[0]+")\n"), nil
-		
-		case "ERROR":
-			return []byte(g.indt()+"ERROR="+args[0]+"\n"), nil
-			
-		case "STDOUT", "STDIN", "LOAD":
-			return []byte(g.indt()+strings.ToLower(command)+"(STACK)\n"), nil
-			
-		case "LOOP":
-			defer func() { g.Indentation++ }()
-			return []byte(g.indt()+"for {\n"), nil
-		case "REPEAT", "END", "DONE":
-			g.Indentation--
-			return []byte(g.indt()+"}\n"), nil
-		case "IF":
-			defer func() { g.Indentation++ }()
-			return []byte(g.indt()+"if "+args[0]+".If() {\n"), nil
-		case "RUN":
-			return []byte(g.indt()+args[0]+"(STACK)\n"), nil
-		case "ELSE":
-			return []byte(g.indt(-1)+"} else {\n"), nil
-		case "ELSEIF":
-			return []byte(g.indt(-1)+"} else if "+args[0]+".If() {\n"), nil
-		case "BREAK":
-			return []byte(g.indt()+"break\n"), nil
-		case "RETURN":
-			return []byte(g.indt()+"return\n"), nil
-		case "STRINGDATA":
-			return []byte(g.indt()+"var "+args[0]+" String = String{"+args[1]+"} \n"), nil
-		case "JOIN":
-			return []byte(g.indt()+args[0]+" = append("+args[1]+", "+args[2]+"...) \n"), nil
-		
-		//Maths.
-		case "ADD":
-			return []byte(g.indt()+args[0]+".Add("+args[1]+","+args[2]+")\n"), nil
-		case "SUB":
-			return []byte(g.indt()+args[0]+".Sub("+args[1]+","+args[2]+")\n"), nil
-		case "MUL":
-			return []byte(g.indt()+args[0]+".Mul("+args[1]+","+args[2]+")\n"), nil
-		case "DIV":
-			return []byte(g.indt()+args[0]+".Div("+args[1]+","+args[2]+")\n"), nil
-		case "MOD":
-			return []byte(g.indt()+args[0]+".Mod("+args[1]+","+args[2]+")\n"), nil
-		case "POW":
-			return []byte(g.indt()+args[0]+".Pow("+args[1]+","+args[2]+")\n"), nil
-			
-		case "SLT", "SEQ", "SGE", "SGT", "SNE", "SLE":
-			return []byte(g.indt()+args[0]+" = "+strings.ToLower(command)+"("+args[1]+","+args[2]+")\n"), nil
-		default:
-			/*if expression {
-				return []byte(g.indt()+command+" "+strings.Join(args, " ")+"\n"), nil
-			}*/
-	}
-	return nil, errors.New("Unrecognised expression: "+command+" "+strings.Join(args, " "))
-}
-
-func (g *GoAssembler) Footer() []byte {
-	return []byte("")
-}
+`
