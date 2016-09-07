@@ -138,7 +138,8 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	}
 	
 	if indent, ok := asm["INDENT"]; ok {
-		if instruction.Indented != 0 && instruction.Indented != indent.Indent {
+		if (instruction.Indented == -1 && 0 != indent.Indent) ||
+		(instruction.Indented != 0 && instruction.Indented != indent.Indent) {
 			instruction = *instruction.Else
 		}
 	}

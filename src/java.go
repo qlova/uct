@@ -61,7 +61,7 @@ var JavaAssembly = Assemblable{
 		Indent:      -1,
 		Indentation: -1,
 		Else: &Instruction{
-			Data: "System.exit(stack.ERROR);",
+			Data: "System.exit(stack.ERROR.intValue());",
 		},
 	},
 
@@ -89,6 +89,8 @@ var JavaAssembly = Assemblable{
 
 	"ARRAY":  is("Stack.Array %s = stack.array();", 1),
 	"RENAME": is("%s = stack.ActiveArray;", 1),
+	
+	"RELOAD": is("%s = stack.take();", 1),
 
 	"SHARE": is("stack.share(%s);", 1),
 	"GRAB":  is("Stack.Array %s = stack.grab();", 1),
@@ -109,6 +111,9 @@ var JavaAssembly = Assemblable{
 	"STDOUT": is("stack.stdout();"),
 	"STDIN":  is("stack.stdin();"),
 	"HEAP":   is("stack.heap();"),
+	"LINK":   is("stack.link();"),
+	"CONNECT":   is("stack.connect();"),
+	"SLICE":   is("stack.slice();"),
 
 	"CLOSE": is("%s.close();", 1),
 

@@ -55,7 +55,7 @@ var GoAssembly = Assemblable{
 		Indent:      -1,
 		Indentation: -1,
 		Else: &Instruction{
-			Data: "os.Exit(stack.ERROR.ToInt())",
+			Data: "stack.Exit(stack.ERROR.ToInt())",
 		},
 	},
 
@@ -79,9 +79,10 @@ var GoAssembly = Assemblable{
 
 	"PUT":   is("stack.Put(%s)", 1),
 	"POP":   is("%s := stack.Pop()", 1),
-	"PLACE": is("stack.ActiveArray = &%s", 1),
-	"ARRAY":  is("var %s Array; stack.ActiveArray = &%s", 1),
-	"RENAME": is("%s = *stack.ActiveArray", 1),
+	"PLACE": is("stack.ActiveArray = %s", 1),
+	"ARRAY":  is("var %s = &Array{}; stack.ActiveArray = %s", 1),
+	"RENAME": is("%s = stack.ActiveArray", 1),
+	"RELOAD": is("%s = stack.Take()", 1),
 
 	"SHARE": is("stack.Share(%s)", 1),
 	"GRAB":  is("%s := stack.Grab(); %s.Init()", 1),
@@ -95,6 +96,9 @@ var GoAssembly = Assemblable{
 	"VAR": is("var %s Number", 1),
 
 	"OPEN":   is("stack.Open()"),
+	"LINK":   is("stack.Link()"),
+	"CONNECT":is("stack.Connect()"),
+	"SLICE":  is("stack.Slice()"),
 	"LOAD":   is("stack.Load()"),
 	"OUT":    is("stack.Out()"),
 	"STAT":   is("stack.Info()"),
@@ -114,7 +118,7 @@ var GoAssembly = Assemblable{
 	"END":  is("}", 0, -1, -1),
 
 	"RUN":  is("%s(stack)", 1),
-	"DATA": is("var %s Array = %s;", 2),
+	"DATA": is("var %s *Array = %s;", 2),
 
 	"FORK": is("go %s(stack.Copy())\n", 1),
 
@@ -136,7 +140,7 @@ var GoAssembly = Assemblable{
 	"ERROR": is("stack.ERROR = %s;", 1),
 }
 
-//Edit this in a Java IDE.
+//Edit this in a Go IDE.
 const GoFile = `
 //Compiled to Go with UCT (Universal Code Translator)
 package main
@@ -161,27 +165,28 @@ var Networks_In = make(map[string]net.Listener)
 // It also holds the ERROR variable for the current thread.
 // The currently active array is stored as ActiveArray.
 type Stack struct {
-	Numbers Array
-	Arrays 	[]Array
+	Numbers *Array
+	Arrays 	[]*Array
 	Pipes	[]Pipe
 	
 	ERROR Number
 	ActiveArray *Array
-	TheHeap []Array;
+	TheHeap []*Array;
 	HeapRoom []int
+	Map map[string]Number
 }
 
 func (stack *Stack) Copy() (n *Stack) {
 	n = new(Stack)
-	n.Numbers = Array{}
+	n.Numbers = &Array{}
 	n.Numbers.Small = make([]byte, len(stack.Numbers.Small))
 	copy(n.Numbers.Small, stack.Numbers.Small)
 	n.Numbers.Big = make([]Number, len(stack.Numbers.Big))
 	copy(n.Numbers.Big, stack.Numbers.Big)
 	
-	n.Arrays = make([]Array, len(stack.Arrays))
+	n.Arrays = make([]*Array, len(stack.Arrays))
 	for i := range stack.Arrays {
-		n.Arrays[i] = Array{}
+		n.Arrays[i] = &Array{}
 		n.Arrays[i].Small = make([]byte, len(stack.Arrays[i].Small))
 		copy(n.Arrays[i].Small, stack.Arrays[i].Small)
 		
@@ -195,20 +200,25 @@ func (stack *Stack) Copy() (n *Stack) {
 	return
 }
 
-func (stack *Stack) Array() Array {
+func (stack *Stack) Array() *Array {
 	var array Array
 	stack.ActiveArray = &array
-	return array
+	return &array
 }
 
 func (z *Stack) Init() {
-
+	z.Map = make(map[string]Number)
+	z.Numbers = &Array{}
 }
 
-func (stack *Stack) Share(array Array) {
+func (z *Stack) Exit(n int) {
+	os.Exit(n)
+}
+
+func (stack *Stack) Share(array *Array) {
 	stack.Arrays = append(stack.Arrays, array)
 }
-func (stack *Stack) Grab() (array Array) {
+func (stack *Stack) Grab() (array *Array) {
 	array = stack.Arrays[len(stack.Arrays)-1]
 	stack.Arrays = stack.Arrays[:len(stack.Arrays)-1]
 	return
@@ -221,6 +231,41 @@ func (stack *Stack) Take() (pipe Pipe) {
 	pipe = stack.Pipes[len(stack.Pipes)-1]
 	stack.Pipes = stack.Pipes[:len(stack.Pipes)-1]
 	return
+}
+
+func (stack *Stack) Link() {
+	array := stack.Grab()
+	if array.Big == nil {
+		stack.Map[string(array.Small)] = stack.Pull()
+	} else {
+		stack.Map[array.String()] = stack.Pull()
+	}
+}
+func (stack *Stack) Connect() {
+	array := stack.Grab()
+	if array.Big == nil {
+		n, ok := stack.Map[string(array.Small)]
+		stack.Push(n)
+		if !ok {
+			stack.ERROR = NewNumber(1)
+		}
+	} else {
+		n, ok := stack.Map[array.String()]
+		stack.Push(n)
+		if !ok {
+			stack.ERROR = NewNumber(1)
+		}
+	} 
+}
+
+
+func (stack *Stack) Slice() {
+	array := stack.Grab()
+	if array.Big == nil {
+		stack.Share(&Array{Small:array.Small[stack.Pull().ToInt():stack.Pull().ToInt()]})
+	} else {
+		stack.Share(&Array{Big:array.Big[stack.Pull().ToInt():stack.Pull().ToInt()]})
+	} 
 }
 
 func (stack *Stack) Push(number Number) {
@@ -264,39 +309,39 @@ func (stack *Stack) Heap() {
 			stack.Share(stack.TheHeap[(int(address.Small)%(len(stack.TheHeap)+1))-1])
 			
 		case address.Small < 0:
-			stack.TheHeap[(-int(address.Small))%(len(stack.TheHeap)+1)-1] = Array{}
+			stack.TheHeap[(-int(address.Small))%(len(stack.TheHeap)+1)-1] = &Array{}
 			stack.HeapRoom = append(stack.HeapRoom, -int(address.Small))
 	}
 }
 
 
 func (stack *Stack) Put(number Number) {
-	var array = (*stack.ActiveArray)
+	var array = stack.ActiveArray
 	if number.Int == nil && number.Small < 256  && number.Small >= 0 && array.Big == nil {
-		(*stack.ActiveArray).Small = append(array.Small, byte(number.Small))
+		array.Small = append(array.Small, byte(number.Small))
 	} else {
-		(*stack.ActiveArray).Grow()
-		(*stack.ActiveArray).Big = append(array.Big, number)
+		array.Grow()
+		array.Big = append(array.Big, number)
 	}
 }
 func (stack *Stack) Pop() (number Number) {
-	var array = (*stack.ActiveArray)
+	var array = stack.ActiveArray
 	if array.Big == nil {
 		number.Small = int64(array.Small[len(array.Small)-1])
-		(*stack.ActiveArray).Small = array.Small[:len(array.Small)-1]
+		array.Small = array.Small[:len(array.Small)-1]
 	} else {
 		array.Grow()
 		number = array.Big[len(array.Big)-1]
-		(*stack.ActiveArray).Big = array.Big[:len(array.Big)-1]
+		array.Big = array.Big[:len(array.Big)-1]
 	}
 	return
 }
 
-func (stack *Stack) Place(array Array) {
-	stack.ActiveArray = &array
+func (stack *Stack) Place(array *Array) {
+	stack.ActiveArray = array
 }
 func (stack *Stack) Get() (number Number) {
-	var array = (*stack.ActiveArray)
+	var array = stack.ActiveArray
 	var index Number
 	
 	if array.Big == nil {
@@ -309,16 +354,16 @@ func (stack *Stack) Get() (number Number) {
 	return
 }
 func (stack *Stack) Set(number Number) {
-	var array = (*stack.ActiveArray)
+	var array = stack.ActiveArray
 	var index Number
 	
 	if number.Int == nil && array.Big == nil && number.Small < 256  && number.Small >= 0 {
 		index.Mod(stack.Pull(), NewNumber(len((*stack.ActiveArray).Small)))
-		(*stack.ActiveArray).Small[index.ToInt()] = byte(number.Small)
+		array.Small[index.ToInt()] = byte(number.Small)
 	} else {
-		(*stack.ActiveArray).Grow()
+		array.Grow()
 		index.Mod(stack.Pull(), NewNumber(len((*stack.ActiveArray).Big)))
-		(*stack.ActiveArray).Big[index.ToInt()] = number
+		array.Big[index.ToInt()] = number
 	}
 }
 
@@ -545,27 +590,44 @@ func (stack *Stack) Stdout() {
 }
 
 func (stack *Stack) In() {
-
 	length := stack.Pull()
 	f := stack.Take()
-	
-	
-	if f.Pipe == nil {
-		stack.Push(NewNumber(-1000))
-		return
-	}
-	var err error
-	var b []byte = make([]byte, int(length.ToInt()))
-	var n int
-	n, err = f.Pipe.Read(b)
-	if len(b) > 1 || n == 0 {
-		stack.Push(NewNumber(-1000))
-	}
-	if err != nil {
-		//println(err.Error())
-	}
-	for i:=n-1; i>=0; i-- {
-		stack.Push(NewNumber(int(b[i])))
+
+	switch {
+		case length.Small > 0:
+		
+			var b []byte = make([]byte, int(length.ToInt()))
+			n, err := f.Pipe.Read(b)
+			if err != nil || n <= 0 {
+				println(err.Error())
+				stack.Share(&Array{Small:b})
+				stack.ERROR = NewNumber(1)
+				return
+			}
+			stack.Share(&Array{Small:b})
+		case length.Small == 0:
+			length.Small = -length.Small
+			fallthrough
+			
+		case length.Small < 0:
+			var result []byte = make([]byte, 0, 32)
+			var b []byte = make([]byte, 1)
+			for {
+				n, err := f.Pipe.Read(b)
+				if err != nil || n <= 0 {
+					stack.Share(&Array{Small:result})
+					stack.ERROR = NewNumber(1)
+					return
+				}
+				
+				if b[0] == byte(-length.Small) {
+					stack.Share(&Array{Small:result})
+					return
+				}
+				
+				result = append(result, b[0])
+			}
+			
 	}
 
 }
@@ -580,25 +642,25 @@ func  (stack *Stack) Stdin() {
 			
 			b, err := stdin_reader.ReadBytes('\n')
 			if err != nil || len(b) == 0 {
-				stack.Share(Array{})
+				stack.Share(&Array{})
 			}
-			stack.Share(Array{Small:b[:len(b)-1]})
+			stack.Share(&Array{Small:b[:len(b)-1]})
 			
 		case length.Small > 0:
 		
 			var b []byte = make([]byte, int(length.ToInt()))
 			n, err := os.Stdin.Read(b)
 			if err != nil || n <= 0 {
-				stack.Share(Array{})
+				stack.Share(&Array{})
 			}
-			stack.Share(Array{Small:b})
+			stack.Share(&Array{Small:b})
 			
 		case length.Small < 0:
 			b, err := stdin_reader.ReadBytes(byte(-length.Small))
 			if err != nil || len(b) == 0 {
-				stack.Share(Array{})
+				stack.Share(&Array{})
 			}
-			stack.Share(Array{Small:b[:len(b)-1]})
+			stack.Share(&Array{Small:b[:len(b)-1]})
 	}
 }
 
@@ -865,6 +927,7 @@ type Pipe struct {
 	
 	Pipe io.ReadWriteCloser
 	Connection net.Conn
+	Reader *bufio.Reader
 	
 	Function func(*Stack)
 }
@@ -929,24 +992,24 @@ func (z *Array) String() string {
 	}
 }
 
-func NewStringArray(s string) Array {
+func NewStringArray(s string) *Array {
 	var result = Array{Small:[]byte(s)}
-	return result
+	return &result
 }
 
-func (array *Array) Join(b Array) Array {
+func (array *Array) Join(b *Array) *Array {
 	switch {
 		case array.Small != nil && b.Small != nil:
-			return Array{Small:append(array.Small, b.Small...)}
+			return &Array{Small:append(array.Small, b.Small...)}
 			
 		case (array.Small != nil && b.Big != nil) || (array.Big != nil && b.Small != nil):
 			array.Grow()
 			b.Grow()
 			fallthrough
 		case array.Big != nil && b.Big != nil:
-			return Array{Big:append(array.Big, b.Big...)}
+			return &Array{Big:append(array.Big, b.Big...)}
 	}
-	return Array{}
+	return &Array{}
 }
 
 func __bool2int(b bool) int {

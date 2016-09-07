@@ -45,16 +45,16 @@ var PythonAssembly = Assemblable{
 	"SIZE":   is("len(%s)", 1),
 	"STRING": is("bytes(%s, 'utf-8')", 1),
 	"ERRORS":  is("stack.ERROR", 1),
+	
+	"LINK":  is("stack.link()"),
+	"CONNECT":  is("stack.connect()"),
+	"SLICE":  is("stack.slice()"),
 
 	"SOFTWARE": Instruction{
 		Data:   "stack = stack.Stack()\n",
 	},
 	"EXIT": Instruction{
-		Indented:    0,
-		Data:        "\n",
-		Else: &Instruction{
-			Data: "sys.exit(stack.ERROR)",
-		},
+		Data:        "sys.exit(stack.ERROR)",
 	},
 
 	"FUNCTION": is("def %s(stack):", 1, 1),
@@ -79,6 +79,7 @@ var PythonAssembly = Assemblable{
 	"PLACE": is("stack.activearray = %s", 1),
 	"ARRAY":  is("%s = stack.array()", 1),
 	"RENAME": is("%s = stack.activearray", 1),
+	"RELOAD": is("%s = stack.take()", 1),
 
 	"SHARE": is("stack.share(%s)", 1),
 	"GRAB":  is("%s = stack.grab()", 1),
@@ -175,6 +176,8 @@ class Stack:
 		
 		self.theitheap = []
 		self.heapitroom = []
+		
+		self.map = {}
 
 	def copy(self):
 		n = Stack()
@@ -184,6 +187,29 @@ class Stack:
 
 		n.pipes = self.pipes.copy()
 		return n
+	
+	def link(self):
+		s = self.grab()
+		n = self.pull()
+		name = ""
+		for i in s:
+			name += chr(i)
+		self.map[name] = n
+		
+	def connect(self):
+		s = self.grab()
+		name = ""
+		for i in s:
+			name += chr(i)
+		try:
+			self.push(self.map[name])
+		except:
+			self.push(0)
+			self.ERROR=1
+	
+	def slice(self):
+		s = self.grab()
+		self.share(s[self.pull():self.pull()])
 		
 	def pipe(self, f):
 		return Pipe(f)
@@ -434,15 +460,37 @@ class Stack:
 	def inn(self):
 		length = self.pull()
 		pipe = self.take()
-		
-		bytes = []
+		text = ""
 
-		if pipe.file:
-			v = pipe.file.read(length)
-		elif pipe.connection:
-			bytes = pipe.connection.recv(length)
+		if length == 0:
+			length = -ord("\n")
 			
-		self.share(bytes)
+		if length > 0:
+			try:
+				if pipe.file:
+					self.share(pipe.file.read(length))
+				elif pipe.connection:
+					self.share(pipe.connection.recv(length))
+			except:
+				self.ERROR=1
+				self.share([])
+			return
+		else:
+			bytes = []
+			while 1:
+				try:
+					if pipe.file:
+						bytes += pipe.file.read(1)
+					elif pipe.connection:
+						bytes += pipe.connection.recv(1)
+					if bytes[-1] == -length:
+						bytes = bytes[:-1]
+						break
+				except:
+					self.ERROR=1
+					break
+
+			self.share(bytes)
 
 	def stdout(self):
 		text = self.grab()
