@@ -474,8 +474,6 @@ class Stack:
 			return 0
 
 	def mul(self, a, b):
-		if a == 0 and b == 0:
-			return ord(os.urandom(1)) + 1
 		return a * b
 
 	def pow(self, a, b):

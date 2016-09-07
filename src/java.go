@@ -746,10 +746,6 @@ public class Stack {
         }
 
         Number mul(Number b) {
-            if (intValue() == 0 && b.intValue() == 0) {
-                SecureRandom srand = new SecureRandom();
-                return new Number(srand.nextInt(255)+1);
-            }
             return new Number(a.multiply(b.a));
         }
 

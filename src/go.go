@@ -658,12 +658,6 @@ func (z *Number) Sub(a, b Number) {
 } 
 
 func (z *Number) Mul(a, b Number) {
-	if a.ToInt() == 0 && b.ToInt() == 0 {
-		var b []byte = []byte{1}
-    	rand.Read(b)
-    	*z = NewNumber(int(b[0]+1))
-    	return
-	}
 	
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
