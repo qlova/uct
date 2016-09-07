@@ -566,6 +566,10 @@ public class Stack {
         if (Arguments.length > request.index(new Number(0)).intValue()-1) {
             share(new Array(Arguments[request.index(new Number(0)).intValue()-1]));
             return;
+        } else {
+        	ERROR = new Number(1);
+        	share(result);
+        	return;
         }
 
         share(result);

@@ -321,6 +321,7 @@ class Stack:
 				try:
 					variable = sys.argv[text[0]]
 				except:
+					self.ERROR = 1
 					self.share(result)
 					return
 

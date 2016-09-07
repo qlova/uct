@@ -376,7 +376,9 @@ func (stack *Stack) Load() {
 	
 			if len(os.Args) > int(text.Index(0).ToInt()) {
 				variable = os.Args[text.Index(0).ToInt() ]
-			} 
+			} else {
+				stack.ERROR = NewNumber(1)
+			}
 		}
 	}
 	
