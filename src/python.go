@@ -39,11 +39,13 @@ var PythonAssembly = Assemblable{
 		Data: PythonFile,
 		Path: "/stack.py",
 	},
+	
+	"PYTHON": Instruction{All:true},
 
 	"NUMBER": is("%s", 1),
 	"BIG": 	is("%s", 1),
 	"SIZE":   is("len(%s)", 1),
-	"STRING": is("bytes(%s, 'utf-8')", 1),
+	"STRING": is("list(bytes(%s, 'utf-8'))", 1),
 	"ERRORS":  is("stack.ERROR", 1),
 	
 	"LINK":  is("stack.link()"),
@@ -93,6 +95,8 @@ var PythonAssembly = Assemblable{
 	"VAR": is("%s = 0", 1),
 
 	"OPEN":   is("stack.open()"),
+	"EXECUTE": is("stack.execute()"),
+	"DELETE": is("stack.delete()"),
 	"LOAD":   is("stack.load()"),
 	"OUT":    is("stack.out()"),
 	"STAT":   is("stack.info()"),
@@ -113,7 +117,7 @@ var PythonAssembly = Assemblable{
 	"END":  is("\n", 0, -1, -1),
 
 	"RUN":  is("%s(stack)", 1),
-	"DATA": is("%s = %s;", 2),
+	"DATA": is("%s = %s", 2),
 
 	"FORK": is("threading.Thread(target=%s, args=(stack.copy(),)).start()\n", 1),
 
@@ -354,6 +358,35 @@ class Stack:
 		for char in variable:
 			result.append(ord(char))
 		self.share(result)
+	
+	def execute(self):
+		result = []
+		command = ""
+		for i in range(0, len(command)):
+			command += chr(text[i])
+			
+		variable = os.popen(command).read()
+		
+		for char in variable:
+			result.append(ord(char))
+		self.share(result)
+
+	def delete(self):
+		filename = ""
+		text = self.grab()
+		for i in range(0, len(text)):
+			filename += chr(text[i])
+		
+		if filename == "":
+			self.ERROR = 1
+			return
+		
+		try:
+			os.remove(filename)
+		except:
+			self.ERROR = 1
+			return
+		
 
 	def open(self):
 		filename = ""
@@ -442,18 +475,22 @@ class Stack:
 				return
 			else:
 				try:
-					pipe.file = open(pipe.name, "r+b")
+					pipe.file = open(pipe.name, "w+b")
 				except:
 					self.push(-1)
 					return
 
 		text = self.grab()
-
-		if pipe.connection:
-			pipe.connection.send(bytes(text))
-		else:
-			for i in range(0, len(text)):
-				pipe.file.write(chr(text[i]))
+		
+		try:
+			if pipe.connection:
+				pipe.connection.send(bytes(text))
+			else:
+				pipe.file.write(bytes(text))
+		except:
+			self.ERROR = 1
+			self.push(-1)
+			return
 
 		self.push(0)
 
@@ -480,7 +517,11 @@ class Stack:
 			while 1:
 				try:
 					if pipe.file:
-						bytes += pipe.file.read(1)
+						b = pipe.file.read(1)
+						if len(b) == 0:
+							self.ERROR=1
+							break
+						bytes += b
 					elif pipe.connection:
 						bytes += pipe.connection.recv(1)
 					if bytes[-1] == -length:

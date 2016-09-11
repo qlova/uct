@@ -44,6 +44,8 @@ var JavaAssembly = Assemblable{
 		Data: JavaFile,
 		Path: "/Stack.java",
 	},
+	
+	"JAVA": Instruction{All:true},
 
 	"NUMBER": is("new Stack.Number(%s)", 1),
 	"BIG": is("new Stack.Number(%s)", 1),
@@ -104,6 +106,8 @@ var JavaAssembly = Assemblable{
 	"VAR": is("Stack.Number %s = new Stack.Number();", 1),
 
 	"OPEN":   is("stack.open();"),
+	"DELETE":   is("stack.delete();"),
+	"EXECUTE":   is("stack.execute();"),
 	"LOAD":   is("stack.load();"),
 	"OUT":    is("stack.out();"),
 	"STAT":   is("stack.info();"),
@@ -155,16 +159,17 @@ func JavaScope(args []string) string {
 
 //Edit this in a Java IDE.
 const JavaFile = `
-
 //Compiled to Java with UCT (Universal Code Translator)
 
 //Import java libraries.
 import java.math.BigInteger; 	//Support numbers of any size.
 import java.util.Hashtable;  	//Hashtable is a useful utilPipey.
 import java.util.ArrayList;  	//ArrayLists are helpful.
+import java.util.List;
 import java.io.*;				//Deal with files.
 import java.net.*;				//Deal with the network.
 import java.lang.reflect.*;		//Reflection for methods.
+import java.util.Scanner;
 
 //Random numbers.
 import java.security.SecureRandom;
@@ -191,7 +196,8 @@ public class Stack {
 
     Array				ActiveArray;
     ArrayArray			Heap;
-    ArrayList<Integer>	HeapRoom;
+    List<Integer>	HeapRoom;
+    Hashtable<String, Number> Map;
     
 
     //This hashtable keeps track of Servers currently listening on the specified port.
@@ -212,6 +218,7 @@ public class Stack {
 
         Heap			= new ArrayArray();
         HeapRoom		= new ArrayList<Integer>();
+        Map				= new Hashtable<String, Number>();
     }
 
     //This returns a copy of a stack which can be used by another thread.
@@ -242,6 +249,29 @@ public class Stack {
     //GRAB array
     Array grab() {
         return Arrays.pop();
+    }
+    
+    //CONNECT
+    void connect() {
+        Number num = Map.get(grab().String());
+        if (num == null) {	
+        	push(new Number(0));
+        	ERROR = new Number(1);
+        } else {
+        	push(num);
+        }
+    }
+
+    //LINK 
+    void link() {
+        Map.put(grab().String(), pull());
+    }
+    
+    //SLICE 
+    void slice() {
+        Array result = new Array();
+        result.List = grab().List.subList(pull().intValue(), pull().intValue());
+        share(result);
     }
 
     //RELAY pipe
@@ -402,26 +432,88 @@ public class Stack {
     void in() {
         Pipe file = take();
         Number length = pull();
-        int n = 0;
-        byte[] b = new byte[length.intValue()];
-
-        if (file.input != null) {
-            try {
-                n = file.input.read(b);
-            }catch(Exception e){
-                push(new Number(-1000));
-            }
+       
+       	//This is the mode we use.
+        // >0 is number of bytes to read.
+        // <0 is character to read.
+        // 0 is read a line.
+        if (length.compareTo(new Number(0)) == 0) {
+        
+        	byte[] b = new byte[1];
+        	
+        	String input = "";
+        	
+        	while (true) {
+        		try {
+        			int n = file.input.read(b);
+        			
+        			if (n < 0) {
+		    			ERROR = new Number(-1);
+		    			share(new Array(input));
+		    			return;
+		    		}
+        			
+        		} catch (Exception e) {
+        			ERROR = new Number(-1);
+        			share(new Array(input));
+        			return;
+        		}
+        		
+        		
+        		if (b[0] == '\n') {
+        			share(new Array(input));
+        			return;
+        		}
+        		input += ((char)(b[0]));
+        	}
+        	
+        	
+        } else if (length.compareTo(new Number(0)) == -1)  {
+        
+       		byte[] b = new byte[1];
+        	
+        	String input = "";
+        	
+        	while (true) {
+        		try {
+        			int n = file.input.read(b);
+        			
+        			if (n < 0) {
+		    			ERROR = new Number(-1);
+		    			share(new Array(input));
+		    			return;
+		    		}
+        			
+        		} catch (Exception e) {
+        			ERROR = new Number(-1);
+        			share(new Array(input));
+        			return;
+        		}
+        		
+        		if (b[0] == -length.intValue()) {
+        			share(new Array(input));
+        			return;
+        		}
+        		input += ((char)(b[0]));
+        	}
+        
+        
+        } else { //length is > 0
+        	
+        	
+        	byte[] b = new byte[length.intValue()];
+        	
+    		try {
+    			int n = file.input.read(b);
+    		} catch (Exception e) {
+    			ERROR = new Number(-1);
+    			share(new Array(b));
+    			return;
+    		}
+        	
+			 share(new Array(b));
+			 return;
         }
-
-        if ((b.length > 1) || (n <= 0)) {
-            push(new Number(-1000));
-        }
-
-        for (int i = n-1; i >= 0; i--) {
-            push(new Number(b[i]));
-        }
-
-        return;
     }
 
     void out() {
@@ -444,7 +536,7 @@ public class Stack {
             return;
         }
 
-        if (text.size().intValue() == 0 || file.output == null ) {
+        if (file.Name.length() > 0 && (text.size().intValue() == 0 || file.output == null )) {
             if (file.Name.charAt(file.Name.length()-1) == '/') {
                 if (new File(file.Name).exists()) {
 
@@ -466,9 +558,15 @@ public class Stack {
 
             } else {
                 try {
-                    new File(file.Name).createNewFile();
-                    push(new Number(0));
-                    return;
+                    File newfile = new File(file.Name);
+                    newfile.createNewFile();
+                    try {
+					    file.input = new FileInputStream(newfile);
+					    file.output = new FileOutputStream(newfile, true);
+					}catch(Exception e){
+					    push(new Number(-1));
+						return;
+					}
                 } catch (Exception e)  {
                     push(new Number(-1));
                     return;
@@ -487,6 +585,38 @@ public class Stack {
             }
         }
         push(new Number(0));
+    }
+    
+    void execute() {
+    	String command = grab().String();
+    	String variable = "";
+    	try {
+			
+			String[] complete = {"sh","-c", command};
+			Scanner s = new Scanner(Runtime.getRuntime().exec(complete).getInputStream());
+			s.useDelimiter("\\A");
+    	
+			variable = s.next();
+		} catch (Exception e) {
+			ERROR = new Number(1);
+		}
+		share(new Array(variable));
+    }
+    
+    void delete() {
+    	String name = grab().String();
+    	
+    	if (name.equals("")) {
+    		ERROR = new Number(1);
+    		return;
+    	}
+    	
+    	File file = new File(name);
+    	
+    	if(!file.delete()) { 
+    		ERROR = new Number(1);
+    		return;
+		}
     }
 
 
@@ -576,10 +706,6 @@ public class Stack {
         	share(result);
         	return;
         }
-
-        share(result);
-        ERROR = new Number(404);
-        return;
     }
 
 
@@ -590,6 +716,12 @@ public class Stack {
 
         Pipe pipe = new Pipe();
         pipe.Name = path;
+        
+        if (path.equals("")) {
+        	relay(pipe);
+        	push(new Number(-1));
+        	return;
+        }
 
         //Load various protocols.
         String[] protocol = pipe.Name.split("://", 2);
@@ -635,18 +767,32 @@ public class Stack {
 
         File file = new File(path);
 
-        if (file.exists()) {
+        /*if (!file.exists()) {
+        	try {
+        		file.createNewFile();
+			}catch(Exception e){
+                push(new Number(-1));
+    			relay(pipe);
+            }
+        }*/
+        if (!file.exists()) {
+        	push(new Number(-1));
+			relay(pipe);
+			return;
+        }
             try {
                 pipe.input = new FileInputStream(file);
                 pipe.output = new FileOutputStream(file, true);
             }catch(Exception e){
+                push(new Number(-1));
+    			relay(pipe);
+    			return;
             }
             push(new Number(0));
             relay(pipe);
             return;
-        }
-        push(new Number(-1));
-        relay(pipe);
+        
+       
     }
 
     void info () {
@@ -814,7 +960,7 @@ public class Stack {
     }
 
     public static class PipeArray {
-        ArrayList<Pipe> List;
+        List<Pipe> List;
 
         public PipeArray() {
             List = new ArrayList<Pipe>();
@@ -830,7 +976,7 @@ public class Stack {
 
     //An array of arrays, or a "Heap".
     public static class ArrayArray {
-        ArrayList<Array> List;
+        List<Array> List;
 
         void push(Array n) {
             List.add(n);
@@ -855,7 +1001,7 @@ public class Stack {
     }
 
     public static class Array {
-        ArrayList<Number> List;
+        List<Number> List;
         //new ArrayList<Integer>();
 
         void push(Number n) {

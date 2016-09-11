@@ -39,6 +39,8 @@ var GoAssembly = Assemblable{
 		Path: "/Stack.go",
 	},
 
+	"GO": Instruction{All:true},
+
 	"NUMBER": is("NewNumber(%s)", 1),
 	"BIG": 	is("BigInt(`%s`)", 1),
 	"SIZE":   is("%s.Len()", 1),
@@ -96,6 +98,8 @@ var GoAssembly = Assemblable{
 	"VAR": is("var %s Number", 1),
 
 	"OPEN":   is("stack.Open()"),
+	"DELETE": is("stack.Delete()"),
+	"EXECUTE":is("stack.Execute()"),
 	"LINK":   is("stack.Link()"),
 	"CONNECT":is("stack.Connect()"),
 	"SLICE":  is("stack.Slice()"),
@@ -147,6 +151,7 @@ package main
 
 import "math/big"
 import "os"
+import "os/exec"
 import "io"
 import "crypto/rand"
 import "net"
@@ -167,7 +172,7 @@ var Networks_In = make(map[string]net.Listener)
 type Stack struct {
 	Numbers *Array
 	Arrays 	[]*Array
-	Pipes	[]Pipe
+	Pipes	[]*Pipe
 	
 	ERROR Number
 	ActiveArray *Array
@@ -194,7 +199,7 @@ func (stack *Stack) Copy() (n *Stack) {
 		copy(n.Arrays[i].Big, stack.Arrays[i].Big)
 	}
 	
-	n.Pipes = make([]Pipe, len(stack.Pipes))
+	n.Pipes = make([]*Pipe, len(stack.Pipes))
 	copy(n.Pipes, stack.Pipes)
 	
 	return
@@ -215,6 +220,32 @@ func (z *Stack) Exit(n int) {
 	os.Exit(n)
 }
 
+func (stack *Stack) Execute() {
+	text := stack.Grab().String()
+	
+	out, err := exec.Command("sh", "-c", text).Output()
+    if err != nil {
+        stack.ERROR = NewNumber(1)
+		return
+    }
+    
+	stack.Share(&Array{Small:out})
+}
+
+func (stack *Stack) Delete() {
+	text := stack.Grab().String()
+	
+	if text == "" {
+		stack.ERROR = NewNumber(1)
+		return
+	}
+	
+	if os.Remove(text) != nil {
+		stack.ERROR = NewNumber(1)
+	}
+	
+}
+
 func (stack *Stack) Share(array *Array) {
 	stack.Arrays = append(stack.Arrays, array)
 }
@@ -224,10 +255,10 @@ func (stack *Stack) Grab() (array *Array) {
 	return
 }
 
-func (stack *Stack) Relay(pipe Pipe) {
+func (stack *Stack) Relay(pipe *Pipe) {
 	stack.Pipes = append(stack.Pipes, pipe)
 }
-func (stack *Stack) Take() (pipe Pipe) {
+func (stack *Stack) Take() (pipe *Pipe) {
 	pipe = stack.Pipes[len(stack.Pipes)-1]
 	stack.Pipes = stack.Pipes[:len(stack.Pipes)-1]
 	return
@@ -435,6 +466,11 @@ func (stack *Stack) Open() {
 	var err error
 	
 	text := stack.Grab()
+	
+	var name string
+	for i := 0; i < int(text.Len().Small); i++ {
+		name += string(rune(text.Index(i).ToInt()))
+	}
 
 	var filename string = text.String()
 	
@@ -453,11 +489,11 @@ func (stack *Stack) Open() {
 					it.Pipe = it.Connection
 					if err != nil {
 						stack.Push(NewNumber(-1))
-						stack.Relay(it)
+						stack.Relay(&it)
 						return
 					}
 					stack.Push(NewNumber(0))
-					stack.Relay(it)
+					stack.Relay(&it)
 					return
 					
 				} else {
@@ -465,11 +501,11 @@ func (stack *Stack) Open() {
 					it.Pipe = it.Connection
 					if err != nil {
 						stack.Push(NewNumber(-1))
-						stack.Relay(it)
+						stack.Relay(&it)
 						return
 					}
 					stack.Push(NewNumber(0))
-					stack.Relay(it)
+					stack.Relay(&it)
 					return
 				}
 		}
@@ -478,16 +514,25 @@ func (stack *Stack) Open() {
 	it.Pipe, err = os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0666)
 	if err == nil {
 		stack.Push(NewNumber(0))
-		stack.Relay(it)
+		stack.Relay(&it)
 		return
 	}
+	it.Pipe = nil
+	
+	/*it.Pipe, err = os.Create(filename)
+	if err == nil {
+		stack.Push(NewNumber(0))
+		stack.Relay(&it)
+		return
+	}*/
+	
 	if _, err = os.Stat(filename); err == nil {
 		stack.Push(NewNumber(0))
-		stack.Relay(it)
+		stack.Relay(&it)
 		return
 	}
 	stack.Push(NewNumber(-1))
-	stack.Relay(it)
+	stack.Relay(&it)
 	return
 }
 
@@ -599,7 +644,7 @@ func (stack *Stack) In() {
 			var b []byte = make([]byte, int(length.ToInt()))
 			n, err := f.Pipe.Read(b)
 			if err != nil || n <= 0 {
-				println(err.Error())
+				//println(err.Error())
 				stack.Share(&Array{Small:b})
 				stack.ERROR = NewNumber(1)
 				return
@@ -614,6 +659,7 @@ func (stack *Stack) In() {
 			var b []byte = make([]byte, 1)
 			for {
 				n, err := f.Pipe.Read(b)
+				
 				if err != nil || n <= 0 {
 					stack.Share(&Array{Small:result})
 					stack.ERROR = NewNumber(1)
@@ -999,7 +1045,7 @@ func NewStringArray(s string) *Array {
 
 func (array *Array) Join(b *Array) *Array {
 	switch {
-		case array.Small != nil && b.Small != nil:
+		case array.Big == nil && b.Big == nil:
 			return &Array{Small:append(array.Small, b.Small...)}
 			
 		case (array.Small != nil && b.Big != nil) || (array.Big != nil && b.Small != nil):
