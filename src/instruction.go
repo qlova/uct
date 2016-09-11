@@ -63,8 +63,21 @@ func (asm Assemblable) Indentation(n ...int) string {
 }
 
 func (asm Assemblable) SetFileName(name string) {
-	if _, err := os.Stat(path.Dir(name)+asm["FILE"].Path); os.IsNotExist(err) {
-		ioutil.WriteFile(path.Dir(name)+asm["FILE"].Path, []byte(asm["FILE"].Data), 0600)
+	if asm["FILE"].Data == "" {
+		//if _, err := os.Stat(path.Dir(name)+"/"+asm["FILE"].Path); os.IsNotExist(err) {
+			data, err := Asset("data/"+asm["FILE"].Path)
+			if err == nil {
+				ioutil.WriteFile(path.Dir(name)+"/"+asm["FILE"].Path, data, 0600)
+			} else {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
+		//}
+	} else {
+		println("[depreciated]")
+		if _, err := os.Stat(path.Dir(name)+asm["FILE"].Path); os.IsNotExist(err) {
+			ioutil.WriteFile(path.Dir(name)+asm["FILE"].Path, []byte(asm["FILE"].Data), 0600)
+		}
 	}
 	var extension = filepath.Ext(name)
 	name = filepath.Base(name[0:len(name)-len(extension)])
