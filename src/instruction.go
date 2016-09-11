@@ -15,6 +15,8 @@ type Instruction struct {
 	Data, Path string
 	Indent, Indented, Args int
 	
+	All bool
+	
 	Indentation int
 	Else *Instruction
 	Function func(args []string) string
@@ -74,11 +76,26 @@ func (asm Assemblable) Footer() []byte {
 	return b
 }
 
+var Languages = map[string]bool {
+	"JAVA":true,
+	"GO":true,
+	"PYTHON":true,
+}
+
 func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	instruction, ok := asm[command]
-	if !ok || instruction.Data  == "" {
+	if !ok {
+		if Languages[command] {
+			return []byte(""), nil
+		}
 		return nil, errors.New("Unrecognised command! "+command)
 	}
+	if instruction.All {
+		return []byte(strings.Join(args, " ")+"\n"), nil
+	}
+	if instruction.Data  == "" {
+		return nil, errors.New("Bad command! "+command)
+	} 
 	if command == "NUMBER" || command == "SIZE" || command == "STRING" {
 		return []byte(fmt.Sprintf(instruction.Data, args[0])), nil
 	}
