@@ -16,6 +16,7 @@ type Instruction struct {
 	Indent, Indented, Args int
 	
 	All bool
+	Global bool
 	
 	Indentation int
 	Else *Instruction
@@ -162,8 +163,16 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 			args[i] = string(b)
 			continue
 		}
-		if _, ok := asm[arg]; ok {
-			args[i] = "u_"+args[i]
+		
+		
+		if instruct, ok := asm[arg]; ok {
+			if instruct.Global {
+				if asm["PREFIXGLOBALS"].Global {
+					args[i] = "$"+args[i]
+				}
+			} else {
+				args[i] = "u_"+args[i]
+			}
 		}
 	}
 	
@@ -202,6 +211,11 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 			}
 		}()
 		
+	}
+	
+	//Keep a record of globals.
+	if command == "DATA" {
+		asm[args[0]] = Instruction{Global:true}
 	}
 	
 	if strings.Count(instruction.Data, "%s") >= 1 {
