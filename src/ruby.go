@@ -130,7 +130,7 @@ var RubyAssembly = Assemblable{
 	"RUN":  is("%s(stack)", 1),
 	"DATA": is("$%s = %s", 2),
 
-	"FORK": is("threading.Thread(target=%s, args=(stack.copy(),)).start()\n", 1),
+	"FORK": is("Thread.new{%s(stack.copy)}.join\n", 1),
 
 	"ADD": is("%s = %s + %s", 3),
 	"SUB": is("%s = %s - %s", 3),
