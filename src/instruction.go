@@ -94,6 +94,8 @@ var Languages = map[string]bool {
 	"JAVA":true,
 	"GO":true,
 	"PYTHON":true,
+	"RUBY":true,
+	"LUA":true,
 }
 
 func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
