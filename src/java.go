@@ -88,6 +88,7 @@ var JavaAssembly = Assemblable{
 	"PLACE": is("stack.place(%s);", 1),
 
 	"ARRAY":  is("Stack.Array %s = stack.array();", 1),
+	"MAKE":  is("stack.share(new Stack.Array(stack.pull().intValue()));"),
 	"RENAME": is("%s = stack.ActiveArray;", 1),
 	
 	"RELOAD": is("%s = stack.take();", 1),

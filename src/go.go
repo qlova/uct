@@ -82,6 +82,7 @@ var GoAssembly = Assemblable{
 	"POP":   is("%s := stack.Pop()", 1),
 	"PLACE": is("stack.ActiveArray = %s", 1),
 	"ARRAY":  is("var %s = &Array{}; stack.ActiveArray = %s", 1),
+	"MAKE":  is("stack.Share(&Array{Small:make([]byte, stack.Pull().ToInt())})"),
 	"RENAME": is("%s = stack.ActiveArray", 1),
 	"RELOAD": is("%s = stack.Take()", 1),
 

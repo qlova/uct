@@ -93,6 +93,8 @@ var RubyAssembly = Assemblable{
 	"ARRAY":  is("%s = stack.array", 1),
 	"RENAME": is("%s = stack.activearray", 1),
 	"RELOAD": is("%s = stack.take", 1),
+	
+	"MAKE": is("stack.share Array.new(stack.pull)"),
 
 	"SHARE": is("stack.share %s", 1),
 	"GRAB":  is("%s = stack.grab", 1),

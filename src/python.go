@@ -104,6 +104,7 @@ var PythonAssembly = Assemblable{
 	"STDIN":  is("stack.stdin()"),
 	"HEAP":   is("stack.heap()"),
 	"HEAPIT":   is("stack.heapit()"),
+	"MAKE":   is("stack.share([0]*stack.pull())"),
 
 	"CLOSE": is("%s.close()", 1),
 
