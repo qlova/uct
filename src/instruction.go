@@ -13,6 +13,7 @@ type Assemblable map[string]Instruction
 
 type Instruction struct {
 	Data, Path string
+	Pass, Check string
 	Indent, Indented, Args int
 	
 	All bool
@@ -99,6 +100,7 @@ var Languages = map[string]bool {
 }
 
 func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
+
 	instruction, ok := asm[command]
 	if !ok {
 		if Languages[command] {
@@ -106,8 +108,13 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		}
 		return nil, errors.New("Unrecognised command! "+command)
 	}
+	
+	defer func() {
+		asm["last"] = Instruction{Data:command}
+	}()
+	
 	if instruction.All {
-		return []byte(strings.Join(args, " ")+"\n"), nil
+		return []byte(asm.Indentation(instruction.Indentation)+strings.Join(args, " ")+"\n"), nil
 	}
 	if instruction.Data  == "" {
 		return nil, errors.New("Bad command! "+command)
@@ -118,6 +125,18 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	if command == "ERRORS" {
 		return []byte(fmt.Sprintf(instruction.Data)), nil
 	}
+	
+	
+	//Especially for python, need to pass blank functions
+	if instruction.Check != "" {
+		//println(asm["last"].Data)
+		if asm["last"].Data == instruction.Check {
+			asm["last"] = Instruction{}
+			a, err := asm.Assemble(command, args)
+			return append([]byte(asm.Indentation(1)+instruction.Pass), a...), err
+		}
+	}
+	
 	for i, arg := range args {
 		if len(arg) == 0 {
 			break

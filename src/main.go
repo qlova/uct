@@ -229,7 +229,7 @@ func assemble(filename string) error {
 			if len(token) == 0 {
 				continue
 			}
-			if token[len(token)-1] == ',' {
+			if token != "," && token[len(token)-1] == ',' {
 				token = token[:len(token)-1]
 				tokens[i] = token
 			}
@@ -269,10 +269,24 @@ func assemble(filename string) error {
 					//output.Writeln("aliasing", token, alias)
 				}
 			}
-			if token[0] == '$' {
+			if len(token) > 0 && token[0] == '$' {
 				token = token[1:]
 				tokens[i] = token
 			}
+			
+			if token == "\\" && len(tokens) > i+1 && tokens[i+1] == "t" {
+				token = "\t"
+				tokens[i] = token
+				 tokens[i+1] = ""
+			}
+			
+			if token == "=" && len(tokens) > i+1 && tokens[i+1] == "=" {
+				token = "=="
+				tokens[i] = token
+			 	tokens[i+1] = ""
+			 	continue
+			}
+			
 			if len(token) > 2 && token[0] == '0' && token[1] == 'x' {
 				var hex uint
 				fmt.Sscanf(token[2:], "%x", &hex)

@@ -60,6 +60,8 @@ var PythonAssembly = Assemblable{
 
 	"FUNCTION": is("def %s(stack):", 1, 1),
 	"RETURN": Instruction{
+		Pass: "pass\n",
+		Check: "FUNCTION",
 		Indented:    1,
 		Data:        "\n",
 		Indent:      -1,
