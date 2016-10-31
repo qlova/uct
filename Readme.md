@@ -68,6 +68,7 @@ These are the official supported lanuages for development and testing.
 |----------|-------|------------|-----------|
 |Go		   |  YES  |    YES     |    YES    |
 |Java	   |  YES  |    YES     |    YES    |
+|Javascript|  NO   |    NO      |    NO     |
 |Python	   |  YES  |    YES     |    YES    |
 
 These targets are currently not enabled, they have been in the past and will be added again in a future release.
