@@ -223,7 +223,7 @@ func assemble(filename string) error {
 		//Resolve aliases.
 		resolve:
 		for i, token := range tokens {
-			if tokens[0] == "DATA" {
+			if _, ok := Languages[tokens[0]]; tokens[0] == "DATA" || ok {
 				break
 			}
 			if len(token) == 0 {
@@ -308,8 +308,11 @@ func assemble(filename string) error {
 			}
 			
 			var v bool
-			if len(token) > 1 && !found && tokens[0] != ".alias"  {
-				for _, c := range token {
+			
+			_, ok := Languages[tokens[0]]
+			
+			if !ok && len(token) > 1 && !found && tokens[0] != ".alias"  {
+				for ii, c := range token {
 					switch c {
 						case '=':
 							token = strings.Replace(token, string(c), "_eq_", -1)
@@ -334,9 +337,11 @@ func assemble(filename string) error {
 							tokens[i] = token
 							v = true
 						case ')', '(':
-							token = strings.Replace(token, string(c), "_l_", -1)
-							tokens[i] = token
-							v = true
+							if ii != len(token)-1 {
+								token = strings.Replace(token, string(c), "_l_", -1)
+								tokens[i] = token
+								v = true
+							}
 						case '<':
 							 token = strings.Replace(token, string(c), "_lt_", -1)
 							tokens[i] = token
