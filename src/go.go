@@ -9,7 +9,7 @@ var GoReserved = []string{
 	"const",        "fallthrough",  "if",           "range",        "type",
 	"continue",     "for",          "import",       "return",       "var",
 	"bool",			"byte", 		"len", 			"open", 		"file", 
-	"close", 		"load", 		"copy",
+	"close", 		"load", 		"copy",			"new",
 }
 
 //This is the Java compiler for uct.
@@ -45,6 +45,10 @@ var GoAssembly = Assemblable{
 	"SIZE":   is("%s.Len()", 1),
 	"STRING": is("NewStringArray(%s)", 1),
 	"ERRORS":  is("stack.ERROR", 1),
+	
+	//Experimental.
+	"EVAL": is(`stack.Eval[stack.Grab().String()](stack)`),
+	//"EVALUATION": is(`stack.Eval["%s"] = %s`, 2),
 
 	"SOFTWARE": Instruction{
 		Data:   "func main() { stack := &Stack{}; stack.Init();",
@@ -52,7 +56,7 @@ var GoAssembly = Assemblable{
 	},
 	"EXIT": Instruction{
 		Indented:    1,
-		Data:        "}\n",
+		Data:        "stack.Exit(stack.ERROR.ToInt())}\n",
 		Indent:      -1,
 		Indentation: -1,
 		Else: &Instruction{
@@ -89,6 +93,7 @@ var GoAssembly = Assemblable{
 	"SHARE": is("stack.Share(%s)", 1),
 	"GRAB":  is("%s := stack.Grab(); %s.Init()", 1),
 
+	"PIPE": is("var %s = stack.Pipe()", 1),
 	"RELAY": is("stack.Relay(%s)", 1),
 	"TAKE":  is("%s := stack.Take(); %s.Init()", 1),
 
@@ -97,8 +102,12 @@ var GoAssembly = Assemblable{
 
 	"VAR": is("var %s Number", 1),
 
+	"INBOX":   is("stack.Share(<- stack.Inbox)"),
+	"OUTBOX":   is("stack.Outbox <- stack.Grab()"),
+
 	"OPEN":   is("stack.Open()"),
 	"DELETE": is("stack.Delete()"),
+	"MOVE":   is("stack.Move()"),
 	"EXECUTE":is("stack.Execute()"),
 	"LINK":   is("stack.Link()"),
 	"CONNECT":is("stack.Connect()"),

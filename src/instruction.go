@@ -101,6 +101,8 @@ var Languages = map[string]bool {
 	"QML":true,
 }
 
+var Functions []string
+
 func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 
 	instruction, ok := asm[command]
@@ -128,6 +130,10 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		return []byte(fmt.Sprintf(instruction.Data)), nil
 	}
 	
+	//Experimental.
+	if command == "FUNCTION" {
+		Functions = append(Functions, args[0])
+	}
 	
 	//Especially for python, need to pass blank functions
 	if instruction.Check != "" {
@@ -241,12 +247,22 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		asm[args[0]] = Instruction{Global:true}
 	}
 	
-	if strings.Count(instruction.Data, "%s") >= 1 {
+	var postpend string
+	//Experimental.
+	if _, ok := asm["EVALUATION"]; ok && command == "SOFTWARE"  {
+		for _,name := range Functions {
+			postpend += fmt.Sprintf(asm["EVALUATION"].Data+"\n", name, name)
+		}
+	}
+	
+	data := strings.Replace(instruction.Data, "\n", "\n"+asm.Indentation(instruction.Indentation), -1)
+	
+	if strings.Count(data, "%s") >= 1 {
 	
 		return []byte(asm.Indentation(instruction.Indentation)+
-			fmt.Sprintf(instruction.Data+"\n", varaidic...)), nil
+			fmt.Sprintf(data+"\n"+postpend, varaidic...)), nil
 	} else {
 		return []byte(asm.Indentation(instruction.Indentation)+
-			fmt.Sprint(instruction.Data+"\n")), nil
+			fmt.Sprint(data+"\n"+postpend)), nil
 	}
 }

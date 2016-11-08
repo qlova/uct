@@ -95,6 +95,10 @@ var PythonAssembly = Assemblable{
 
 	"VAR": is("%s = 0", 1),
 
+	"PIPE": is("%s = stack.queue()", 1),
+	"INBOX":   is("stack.share(stack.inbox.get(True))\nstack.inbox.task_done()"),
+	"OUTBOX":   is("stack.outbox.put(stack.grab())"),
+
 	"OPEN":   is("stack.open()"),
 	"EXECUTE": is("stack.execute()"),
 	"DELETE": is("stack.delete()"),

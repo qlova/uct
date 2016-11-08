@@ -223,8 +223,20 @@ func assemble(filename string) error {
 		//Resolve aliases.
 		resolve:
 		for i, token := range tokens {
+			
+			if token == "\\" && len(tokens) > i+1 && tokens[i+1] == "t" {
+				token = "\t"
+				tokens[i] = token
+				 tokens[i+1] = ""
+			}
+			
+			if token == "=" && len(tokens) > i+1 {
+				tokens[i] = token+tokens[i+1]
+				 tokens[i+1] = ""
+			}
+		
 			if _, ok := Languages[tokens[0]]; tokens[0] == "DATA" || ok {
-				break
+				continue
 			}
 			if len(token) == 0 {
 				continue
@@ -272,12 +284,6 @@ func assemble(filename string) error {
 			if len(token) > 0 && token[0] == '$' {
 				token = token[1:]
 				tokens[i] = token
-			}
-			
-			if token == "\\" && len(tokens) > i+1 && tokens[i+1] == "t" {
-				token = "\t"
-				tokens[i] = token
-				 tokens[i+1] = ""
 			}
 			
 			if token == "=" && len(tokens) > i+1 && tokens[i+1] == "=" {
