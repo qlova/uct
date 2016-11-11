@@ -99,6 +99,8 @@ var PythonAssembly = Assemblable{
 	"INBOX":   is("stack.share(stack.inbox.get(True))\nstack.inbox.task_done()"),
 	"OUTBOX":   is("stack.outbox.put(stack.grab())"),
 
+	"EVAL": is("eval(bytes(stack.grab()).decode()+'(stack)')"),
+
 	"OPEN":   is("stack.open()"),
 	"EXECUTE": is("stack.execute()"),
 	"DELETE": is("stack.delete()"),
@@ -131,7 +133,7 @@ var PythonAssembly = Assemblable{
 	"SUB": is("%s = %s - %s", 3),
 	"MUL": is("%s = stack.mul(%s, %s)", 3),
 	"DIV": is("%s = stack.div(%s, %s)", 3),
-	"MOD": is("%s = %s %% %s", 3),
+	"MOD": is("%s = stack.mod(%s, %s)", 3),
 	"POW": is("%s = stack.pow(%s, %s)", 3),
 
 	"SLT": is("%s = int(%s <  %s)", 3),

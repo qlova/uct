@@ -48,7 +48,7 @@ var GoAssembly = Assemblable{
 	
 	//Experimental.
 	"EVAL": is(`stack.Eval[stack.Grab().String()](stack)`),
-	//"EVALUATION": is(`stack.Eval["%s"] = %s`, 2),
+	"EVALUATION": is(`stack.Eval["%s"] = %s`, 2),
 
 	"SOFTWARE": Instruction{
 		Data:   "func main() { stack := &Stack{}; stack.Init();",
