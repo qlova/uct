@@ -313,6 +313,11 @@ func assemble(filename string) error {
 				goto resolve
 			}
 			
+			if i > 0 && token != "ERROR" && token != strings.ToLower(token) {
+				token = "l_"+strings.ToLower(token)
+				tokens[i] = token
+			}
+			
 			var v bool
 			
 			_, ok := Languages[tokens[0]]
