@@ -123,16 +123,11 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	if instruction.Data  == "" {
 		return nil, errors.New("Bad command! "+command)
 	} 
-	if command == "NUMBER" || command == "SIZE" || command == "STRING" {
+	if command == "NUMBER" || command == "SIZE" || command == "STRING" || command == "BIG" {
 		return []byte(fmt.Sprintf(instruction.Data, args[0])), nil
 	}
 	if command == "ERRORS" {
 		return []byte(fmt.Sprintf(instruction.Data)), nil
-	}
-	
-	//Experimental.
-	if command == "FUNCTION" {
-		Functions = append(Functions, args[0])
 	}
 	
 	//Especially for python, need to pass blank functions
@@ -203,6 +198,12 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 				args[i] = "u_"+args[i]
 			}
 		}
+	}
+	
+		
+	//Experimental.
+	if command == "FUNCTION" {
+		Functions = append(Functions, args[0])
 	}
 	
 	if indent, ok := asm["INDENT"]; ok {
