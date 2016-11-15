@@ -100,6 +100,7 @@ return bytes;
 	"PLACE": is("stack.activearray = %s", 1),
 	"ARRAY":  is("stack.activearray = []; var %s = stack.activearray", 1),
 	"RENAME": is("%s = stack.activearray", 1),
+	"EVAL": is("eval(stack.grabstring()+'(stack)')"),
 	
 	"RELOAD": is("%s = stack.take()", 1),
 

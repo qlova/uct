@@ -44,6 +44,8 @@ var JavaAssembly = Assemblable{
 	},
 	
 	"JAVA": Instruction{All:true},
+	
+	"EVAL": is("Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { new Object() { }.getClass().getEnclosingClass().getDeclaredMethod(stack.grab().String(), cArg).invoke(null, stack); } catch (Exception e) { throw new RuntimeException(e); }"),
 
 	"NUMBER": is("new Stack.Number(%s)", 1),
 	"BIG": is("new Stack.Number(%s)", 1),
