@@ -394,10 +394,7 @@ func assemble(filename string) error {
 				if !imported[tokens[1]+".u"] {
 					err := assemble(tokens[1]+".u")
 					if err != nil {
-						err := assemble("lib/"+tokens[1]+".u")
-						if err != nil {
-							return errors.New(filename+":"+err.Error())
-						}
+						return errors.New(filename+":"+err.Error())
 					}
 					imported[tokens[1]+".u"] = true
 				}
