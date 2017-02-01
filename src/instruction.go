@@ -99,6 +99,7 @@ var Languages = map[string]bool {
 	"LUA":true,
 	"JAVASCRIPT":true,
 	"QML":true,
+	"RUST": true,
 }
 
 var Functions []string
@@ -193,6 +194,9 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 			if instruct.Global {
 				if asm["PREFIXGLOBALS"].Global {
 					args[i] = "$"+args[i]
+				} else {
+					//This is for rust. Inline data.
+					args[i] = asm[arg].Data
 				}
 			} else {
 				args[i] = "u_"+args[i]
@@ -245,7 +249,7 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	
 	//Keep a record of globals.
 	if command == "DATA" {
-		asm[args[0]] = Instruction{Global:true}
+		asm[args[0]] = Instruction{Global:true, Data: args[1]}
 	}
 	
 	var postpend string
@@ -258,6 +262,21 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	
 	data := strings.Replace(instruction.Data, "\n", "\n"+asm.Indentation(instruction.Indentation), -1)
 	
+	if len(varaidic) > 0 {
+		var value = fmt.Sprint(varaidic[0])
+		//RUST workaraound.
+		if asm["RUST"].All && (strings.Count(value, "NewStringArray") >= 1 || strings.Count(value, ".len().to_bigint().unwrap()") >= 1) {
+			tmp++
+		
+			var name = "rust_workaround"+fmt.Sprint(tmp)
+		
+			return []byte(asm.Indentation(instruction.Indentation)+
+			"let mut "+name+" = "+value+";\n"+
+			asm.Indentation(instruction.Indentation)+
+				fmt.Sprintf(data+"\n"+postpend, name)), nil
+		}
+	}
+	
 	if strings.Count(data, "%s") >= 1 {
 	
 		return []byte(asm.Indentation(instruction.Indentation)+
@@ -267,3 +286,5 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 			fmt.Sprint(data+"\n"+postpend)), nil
 	}
 }
+
+var tmp = 0

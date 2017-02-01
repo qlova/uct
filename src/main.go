@@ -313,11 +313,6 @@ func assemble(filename string) error {
 				goto resolve
 			}
 			
-			if i > 0 && token != "ERROR" && token != strings.ToLower(token) {
-				token = "l_"+strings.ToLower(token)
-				tokens[i] = token
-			}
-			
 			var v bool
 			
 			_, ok := Languages[tokens[0]]
@@ -381,6 +376,19 @@ func assemble(filename string) error {
 						tokens[i] = token
 					}
 				}
+				
+				//Something to do with keeping things lowercase
+				//I don't know why this is important??
+							
+				/*if i > 0 && token != "ERROR" && token != strings.ToLower(token) {
+					if token[0] == '#' {
+						token = "#l_"+strings.ToLower(token)[1:]
+						tokens[i] = token
+					} else {
+						token = "l_"+strings.ToLower(token)
+						tokens[i] = token
+					}
+				}*/
 			}
 		}
 
