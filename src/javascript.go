@@ -123,7 +123,7 @@ return bytes;
 	"STDIN":  is("stack.stdin()"),
 	"HEAP":   is("stack.heap()"),
 	"HEAPIT":   is("stack.heapit()"),
-	"MAKE":   is("stack.share([0]*stack.pull())"),
+	"MAKE":   is("stack.share(new Array(stack.pull().toJSNumber()).fill(bigInt.zero))"),
 
 	"CLOSE": is("%s.close()", 1),
 
