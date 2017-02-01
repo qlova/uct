@@ -119,6 +119,7 @@ var GoAssembly = Assemblable{
 	"STDOUT": is("stack.Stdout()"),
 	"STDIN":  is("stack.Stdin()"),
 	"HEAP":  is("stack.Heap()"),
+	"HEAPIT":  is("stack.HeapIt()"),
 
 	"CLOSE": is("%s.Close()", 1),
 
