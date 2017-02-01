@@ -3,13 +3,17 @@ package main
 import "flag"
 
 var RustReserved = []string{
-	/*"break",        "default",      "func",         "interface",    "select",
-	"case",         "defer",        "go",           "map",          "struct",
-	"chan",         "else",         "goto",         "package",      "switch",
-	"const",        "fallthrough",  "if",           "range",        "type",
-	"continue",     "for",          "import",       "return",       "var",
-	"bool",			"byte", 		"len", 			"open", 		"file", 
-	"close", 		"load", 		"copy",			"new",*/
+	"abstract",	"alignof",	"as",		"become",	"box",
+	"break",	"const",	"continue",	"crate",	"do",
+	"else",		"enum",		"extern",	"false",	"final",
+	"fn",		"for",		"if",		"impl",		"in",
+	"let",		"loop",		"macro",	"match",	"mod",
+	"move",		"mut",		"offsetof",	"override",	"priv",
+	"proc",		"pub",		"pure",		"ref",		"return",
+	"Self",		"self",		"sizeof",	"static",	"struct",
+	"super",	"trait",	"true",		"type",		"typeof",
+	"unsafe",	"unsized",	"use",		"virtual",	"where",
+	"while",	"yield",
 }
 
 //This is the Java compiler for uct.
