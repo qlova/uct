@@ -1,11 +1,11 @@
-#Universal compiler and translator
+# Universal compiler and translator
 
 UCT is an innovative new technology for computer science.
 
 The technology consists of Universal Assembly and a Universal Compiler.
 With UCT, it is possible to target other programming languages. What this means, is that you can write a program in Universal Assembly and then compile it into a language such as Python or Java. For a list of targets, see below:
 
-##Philosophy/Rant (Trigger warning!)
+## Philosophy/Rant (Trigger warning!)
 Most Programming languages are stupid.  
 We as a species are too attached to the limitations of computer hardware. For some reason programming is still chained to concepts such as bits and bytes and obscure things which have little meaning to anything else in the world. If I want to program, I don't care about what hardware I have! I just want my instructions to be followed.  
 Java is not a solution to this at all. Don't program in Java.  
@@ -39,12 +39,12 @@ The numbers have a strange property of being unbinded.
 This means they can contain any finite +/- value or zero.
 
 
-##High level UCT
+## High level UCT
 There is a programming language in development called "I" which follows the UCT philosophy.
 You can find it at http://github.com/qlova/ilang
 It compiles to UCT and I encourage you to use it.
 
-##Experimental features
+## Experimental features
 In order to be more useful as a language Universal Assembly has some experimental features.
 
 **I/O**
@@ -58,7 +58,7 @@ With the fork instruction, new threads can be created, the thread communication 
 An extension of I/O, networking will enable reading and writing of various internet protocols.
 
 
-##Targets
+## Targets
 
 These are the languages available as a target.
 The table also shows experimental feature support.
@@ -81,14 +81,14 @@ These targets are currently not enabled, they have been in the past and will be 
 |C#		   |  SOME |     NO     |    NO     |
 |Lua       |  SOME |     NO     |    NO     |
 
-#Install
+# Install
 
 ```bash
 #Make sure $GOPATH/bin is in $PATH then:
 go get github.com/qlova/uct
 ```
 
-#Using
+# Using
 
 ```bash
 		uct -ext input.u
@@ -100,7 +100,7 @@ go get github.com/qlova/uct
 ```
 
 
-#Hello World
+# Hello World
 ```u
 		DATA helloworld "Hello World\n"
 
