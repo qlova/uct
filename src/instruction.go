@@ -1,4 +1,4 @@
-package main
+package uct
 
 import "io/ioutil"
 import "path"
