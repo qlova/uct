@@ -173,6 +173,21 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		}
 	
 		if arg[0] == '#' {
+			if instruct, ok := asm[arg[1:]]; ok {
+				if instruct.Global {
+					if asm["PREFIXGLOBALS"].Global {
+						arg = "#$"+arg[1:]
+					} else {
+						//This is for rust. Inline data.
+						//Not sure if it needs to be here, so commented it out.
+						//Could cause a bug with indexing in rust.
+						
+						//args[i] = asm[arg].Data
+					}
+				} else {
+					arg = "#u_"+arg[1:] //Fix for reserved words in languages being used as a length.
+				}
+			}
 			b, _ = asm.Assemble("SIZE", []string{arg[1:]})
 			args[i] = string(b)
 			continue

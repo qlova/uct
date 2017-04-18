@@ -10,6 +10,7 @@ var PythonReserved = []string{
 	"class",     "exec",      "in",        "raise", 	"open",             
 	"continue",  "finally",   "is",        "return",    "bool",   
 	"def",       "for",       "lambda",    "try",		"copy",
+	"list",
 
 }
 
