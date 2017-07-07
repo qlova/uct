@@ -66,6 +66,7 @@ func (asm Assemblable) Indentation(n ...int) string {
 
 func (asm Assemblable) SetFileName(name string) {
 	if asm["FILE"].Data == "" {
+		if asm["FILE"].Path != "" {
 		//if _, err := os.Stat(path.Dir(name)+"/"+asm["FILE"].Path); os.IsNotExist(err) {
 			data, err := Asset("data/"+asm["FILE"].Path)
 			if err == nil {
@@ -75,6 +76,7 @@ func (asm Assemblable) SetFileName(name string) {
 				os.Exit(1)
 			}
 		//}
+		}
 	} else {
 		println("[depreciated]")
 		if _, err := os.Stat(path.Dir(name)+asm["FILE"].Path); os.IsNotExist(err) {
@@ -100,9 +102,11 @@ var Languages = map[string]bool {
 	"JAVASCRIPT":true,
 	"QML":true,
 	"RUST": true,
+	"BASH": true,
 }
 
 var Functions []string
+var LastFunction string
 
 func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 
@@ -125,10 +129,28 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		return nil, errors.New("Bad command! "+command)
 	} 
 	if command == "NUMBER" || command == "SIZE" || command == "STRING" || command == "BIG" {
-		return []byte(fmt.Sprintf(instruction.Data, args[0])), nil
+		if instruction.Function != nil {
+			result := instruction.Function(args)
+			return []byte(result), nil
+		}
+		if asm["BASH"].All && command == "SIZE" {
+			return []byte(fmt.Sprintf(instruction.Data, LastFunction+args[0])), nil
+		} else {
+			return []byte(fmt.Sprintf(instruction.Data, args[0])), nil
+		}
 	}
 	if command == "ERRORS" {
 		return []byte(fmt.Sprintf(instruction.Data)), nil
+	}
+	
+	//This is to fix the BASH circular reference bug.
+	if command == "FUNCTION" {
+		if len(args) > 0 {
+			LastFunction = args[0]
+		}
+	}
+	if command == "SOFTWARE" {
+		LastFunction = "software"
 	}
 	
 	//Especially for python, need to pass blank functions
@@ -209,12 +231,17 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 			if instruct.Global {
 				if asm["PREFIXGLOBALS"].Global {
 					args[i] = "$"+args[i]
-				} else {
+				} else if asm["RUST"].All {
 					//This is for rust. Inline data.
 					args[i] = asm[arg].Data
 				}
 			} else {
 				args[i] = "u_"+args[i]
+			}
+		} else {
+			//Hardcoded fix for BASH's "circular name reference" bug.
+			if command != "FUNCTION" && command != "DATA" && command != "RUN" && command != "SCOPE" && asm["BASH"].All {
+				args[i] = LastFunction+args[i]
 			}
 		}
 	}
