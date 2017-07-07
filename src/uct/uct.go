@@ -1,7 +1,7 @@
 package main
 
 import "flag"
-import "../"
+import "github.com/qlova/uct/src"
 import (
 	"os"
 	"path/filepath"

@@ -83,7 +83,13 @@ var GoAssembly = Assemblable{
 	"PULL": is("%s := stack.Pull(); %s.Init()", 1),
 
 	"PUT":   is("stack.Put(%s)", 1),
-	"POP":   is("%s := stack.Pop()", 1),
+	"POP":   Instruction {
+		Data: " ",
+		Args: 1,
+		Function: func(args []string) string {
+			return args[0]+" := stack.Pop(); "+args[0]+".Add("+args[0]+", NewNumber(0))\n"
+		},
+	},
 	"PLACE": is("stack.ActiveArray = %s", 1),
 	"ARRAY":  is("var %s = &Array{}; stack.ActiveArray = %s", 1),
 	"MAKE":  is("stack.Share(&Array{Small:make([]byte, stack.Pull().ToInt())})"),
