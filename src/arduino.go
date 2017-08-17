@@ -27,24 +27,25 @@ var ArduinoAssembly = Assemblable{
 		Data:   `
 
 
-struct ExtendedArray { 
-    int data[14];
-    ExtendedArray *next;
+//System configiration.
+	//Tweak these values based upon the amount of RAM your microcontroller has.	
+	const int HEAP_SIZE = 48; //This is how many blocks the system can allocate before running out of memory.
+	const int BLOCK_SIZE = 15; //This is the how many integers a block can hold.
+//End configuriation.
+
+enum {
+	length_pos, refcount_pos, nesting_pos, data_pos
 };
 
-struct Array { 
-    int length;
-    int refcount; //reference counter.
-    int nesting;
-    int data[11];
-    ExtendedArray *next;
+struct Block {
+	int index[BLOCK_SIZE];
+	Block *next;
 };
-
 
 int ERROR;
-Array *activearray;
+Block *activearray;
 
-Array *arrays[5];
+Block *arrays[5];
 int array_pointer;
 int numbers[5];
 int number_pointer;
@@ -53,178 +54,29 @@ int (*pipes[5])();
 int pipe_pointer;
 
 //Garbage collection.
-int nesting;
-Array *garbagetruck[48];
-int garbage_pointer;
+volatile int nesting;
+Block *heap[HEAP_SIZE];
 
-void extended_array_collect(ExtendedArray *arr) {
-	if (!arr->next) {
-		extended_array_collect(arr->next);
+void collect_block(Block *b) {
+	if (b->index[length_pos] > (BLOCK_SIZE-data_pos)) {
+		collect_block(b->next);
 	}
-	free(arr);
-}
-
-void array_collect(Array *arr) {
-	if (!arr->next) {
-		extended_array_collect(arr->next);
-	}
-	free(arr);
+	b->index[length_pos] = -2;
 }
 
 void stack_collect() {
   nesting--;
-  for (int i = 0; i < 64; i++) {
-    if (!garbagetruck[i]) {
-      //Check the reference counter and the nesting value.
-      //If the reference counter is zero and the nesting value is greater than the current nesting value.
-      //Free the memory.
-      Array *arr = garbagetruck[i];
-      if (arr->refcount == 0 && arr->nesting > nesting) {
-        array_collect(arr);
-        garbagetruck[i] = 0;
-      }
-    } 
-  }
-}
-
-Array *stack_data(int data[]) {
-  int length = sizeof(data) / sizeof(int);
-  Array *a = stack_array(length);
-  for (int i = 0; i < length; i++) {
-    stack_put(data[i]);
-  }
-  a->refcount = 1;
-  return a;
-}
-	
-Array *stack_array(int l) {
-  Array *arr = new Array();
   
-  //Because ardunio is buggy.
-  //Don't remove these next two lines because, well, It breaks stdin.
-  //(I have no clue)
-  Serial.print(F(""));
-  Serial.flush();
-  
-  arr->length = 0; //Length
-  arr->refcount = 0; //Reference Count.
-  arr->nesting = nesting; //Nesting value.
-  activearray = arr;
-  for (int i = 0; i < 64; i++) {
-    if (!garbagetruck[i]) {
-      garbagetruck[i] = arr;
-    } 
-  }
-  return arr;
-}
-
-int *stack_get_array_segment(Array *arr, int length) {
-	//Linked list time!
-  	//I hope this works!
-  	
-   ExtendedArray *next;
-  
-  	if (!(arr->next)) {
-  	  arr->next = new ExtendedArray();
-  	  next = arr->next;
-  	} else {
-  	  next = arr->next;
-  	}
-  	
-  	length -= 11;
-  	while (length > 14) {
-  		if (!(next->next)) {
-	  		next->next = new ExtendedArray();
-	  	}
-	  	next = next->next;
-  		length -= 14;
-  	}
-  	
-  	return &(next->data[length]);
-}
-
-void stack_put(int value) {
-  int length = activearray->length;
-  
-  if (length >= 11) {
-  
-  	int *pointer = stack_get_array_segment(activearray, length);
-  	*pointer = value;
-  	activearray->length = length + 1;
-
-  	
-  } else {
-	  activearray->data[length] = value;
-	  activearray->length = length + 1;
-  }
-}
-
-Array *stack_join(Array *a, Array *b) {
-	Array *c = stack_array(0);
-	for (int i = 0; i < a->length; i++) {
-		activearray = a;
-		stack_push(i);
-		int value = stack_get();
-		
-		activearray = c;
-		stack_put(value);
-	}
-	for (int i = 0; i < b->length; i++) {
-		activearray = b;
-		stack_push(i);
-		int value = stack_get();
-		
-		activearray = c;
-		stack_put(value);
-	}
-	
-	return c;
-}
-
-int  stack_pop() {
-  int length = activearray->length;
-	
-	if (length >= 11) {
-	
-		int value = *stack_get_array_segment(activearray, length);
-		activearray->length = length - 1;
-		return value;
-
-	} else { 
-	  int value = activearray->data[length];
-	  activearray->length = length - 1;
-	  return value;
-	}
-}
-
-
-int stack_get() {
-  int index = stack_pull();
-  int length = activearray->length;
-  if (length == 0) {
-    return 0;
-  }
-  
-  index = index % length;
-  
-  if (index < 11) {
-    return activearray->data[index];
-  } else {
-  	int *value = stack_get_array_segment(activearray, index);
-  	return *value;
-  }
-}
-
-int stack_set(int value) {
-  int index = stack_pull();
-  int length = activearray->length;
-  index = index % length;
-  
-  if (index < 11) {
-    activearray->data[index] = value;
-  }
- int *pointer = stack_get_array_segment(activearray, index);
-  *pointer = value;
+  for (int i = 0; i < HEAP_SIZE; i++) {
+		if (heap[i] && heap[i]->index[length_pos] >= 0) {
+			int nest = heap[i]->index[nesting_pos];
+			int refcount = heap[i]->index[refcount_pos];
+			
+			if (refcount == 0 && nest > nesting) {
+				collect_block(heap[i]);
+			}
+		}
+   }
 }
 
 void stack_push(int num) {
@@ -237,6 +89,140 @@ int stack_pull() {
   return numbers[number_pointer]; 
 }
 
+Block *get_free_block() {
+
+	for (int i = 0; i < HEAP_SIZE; i++) {
+		if (heap[i] && heap[i]->index[length_pos] == -2) {
+		  	return heap[i];
+		} 
+ 	}
+
+	return new Block();
+}
+
+//Create a new array.
+Block *stack_array(int l) {
+  //Need to check if there is a block which we can recycle!
+  Block *arr = get_free_block();
+  
+  if (arr->index[length_pos] == -2) {
+    
+  	arr->index[length_pos] = 0;
+  	arr->index[refcount_pos] = 0;
+  	arr->index[nesting_pos] = nesting;
+  	activearray = arr;
+  	return arr;
+  	
+  } else {
+    
+    int done = 0;
+    for (int i = 0; i < HEAP_SIZE; i++) {
+      if (heap[i] == 0) {
+        heap[i] = arr;
+        activearray = arr;
+        done = 1;
+        break;
+      } 
+    }
+    
+    if (done) {
+      return arr;
+    } else {
+      Serial.println(F("[ERROR] Out of memory!"));
+      exit(1);
+    }
+  }
+}
+
+int *stack_get_array_segment(Block *arr, int length) {
+	//Linked list time!
+  	//I hope this works!
+  	
+	Block *next;
+  
+  	if (!(arr->next)) {
+  	  arr->next = get_free_block();
+  	  next = arr->next;
+  	  next->index[0] = -1;
+  	} else {
+  	  next = arr->next;
+  	}
+  	
+  	length -= (BLOCK_SIZE - data_pos);
+  	while (length > BLOCK_SIZE-1) {
+  		if (!(next->next)) {
+	  		next->next = get_free_block();
+	  		next = next->next;
+	  		next->index[0] = -1;
+	  	} else {
+	  		next = next->next;
+	  	}
+  		length -= (BLOCK_SIZE-1);
+  	}
+  	
+  	return &(next->index[length+1]);
+}
+
+void stack_put(int value) {
+  int length = activearray->index[length_pos];
+  
+  if (length >= (BLOCK_SIZE - data_pos)) {
+  
+  	int *pointer = stack_get_array_segment(activearray, length);
+  	*pointer = value;
+  	activearray->index[length_pos] = length + 1;
+  	
+  } else {
+	  activearray->index[length+data_pos] = value;
+	  activearray->index[length_pos] = length + 1;
+  }
+}
+
+int stack_pop() {
+  int length = activearray->index[length_pos];
+	
+	if (length >= (BLOCK_SIZE - data_pos)) {
+	
+		int value = *stack_get_array_segment(activearray, length);
+		activearray->index[length_pos] = length - 1;
+		return value;
+
+	} else { 
+		int value = activearray->index[length+data_pos];
+		activearray->index[length_pos] = length - 1;
+		return value;
+	}
+}
+
+
+int stack_get() {
+  int index = stack_pull();
+  int length = activearray->index[length_pos];
+  if (length == 0) {
+    return 0;
+  }
+  
+  index = index % length;
+  
+  if (index < (BLOCK_SIZE - data_pos)) {
+    return activearray->index[index+data_pos];
+  } else {
+  	return *(stack_get_array_segment(activearray, index));
+  }
+}
+
+int stack_set(int value) {
+  int index = stack_pull();
+  int length = activearray->index[length_pos];
+  index = index % length;
+  
+  if (index < (BLOCK_SIZE - data_pos)) {
+    activearray->index[index+data_pos] = value;
+  }
+ int *pointer = stack_get_array_segment(activearray, index);
+  *pointer = value;
+}
+
 void stack_relay(int (*pipe)()) {
   pipes[pipe_pointer] = pipe;
   pipe_pointer++;
@@ -247,9 +233,9 @@ int (*stack_take())() {
   return pipes[pipe_pointer]; 
 }
 
-void stack_share(Array *arr) {
+void stack_share(Block *arr) {
   arrays[array_pointer] = arr;
-  arr->refcount++;
+  arr->index[refcount_pos]++;
   array_pointer++;
 }
 
@@ -266,66 +252,67 @@ int powint(int x, int y)
  return val;
 }
 
-Array *stack_grab() {
+Block *stack_grab() {
   array_pointer--;
-  Array *arr = arrays[array_pointer];
-  arr->refcount--;
-  arr->nesting = nesting;
+  Block *arr = arrays[array_pointer];
+  arr->index[refcount_pos]--;
+  arr->index[nesting_pos] = nesting;
   return arr;
+}
+
+Block *stack_join(Block *a, Block *b) {
+	Block *c = stack_array(0);
+	for (int i = 0; i < a->index[length_pos]; i++) {
+		activearray = a;
+		stack_push(i);
+		int value = stack_get();
+		
+		activearray = c;
+		stack_put(value);
+	}
+	for (int i = 0; i < b->index[length_pos]; i++) {
+		activearray = b;
+		stack_push(i);
+		int value = stack_get();
+		
+		activearray = c;
+		stack_put(value);
+	}
+	
+	return c;
+}
+
+Block *stack_data(int data[]) {
+  int length = sizeof(data) / sizeof(int);
+  Block *a = stack_array(length);
+  for (int i = 0; i < length; i++) {
+    stack_put(data[i]);
+  }
+  a->index[refcount_pos] = 1;
+  return a;
 }
 
 void stack_stdout() {
   nesting++;
-  Array *arr = stack_grab();
+  Block *arr = stack_grab();
   
-  for (int i = 0; i < arr->length; i++) {
-    if (i < 11) {
-      Serial.write(arr->data[i]);
+
+  
+  for (int i = 0; i < arr->index[length_pos]; i++) {
+    if (i < (BLOCK_SIZE - data_pos)) {
+      Serial.write(arr->index[i+data_pos]);
     } else {
-       Serial.write(*(stack_get_array_segment(arr, i)));
+      Serial.write(*(stack_get_array_segment(arr, i)));
     }
     Serial.flush();
   }
-  
+
   stack_collect();
 }
 
 //Toaster-level stdin.
 void stack_stdin() {
-	int mode = stack_pull();
-	if (!mode) {
-		mode = -10;
-	}
 	
-	//Magic hacks. I don't think Serial wants to run in setu?!s
-	Serial.println(F(" "));
-	Serial.flush();
-	
-	Array *result = stack_array(0);
-	
-	if (mode > 0) {
-		while (mode > 0) {
-			if (Serial.available() > 0) {
-				stack_put(Serial.read());
-				mode--;
-			}
-		}
-	} else {
-		while (1) {
-		  Serial.flush();
-  		while (Serial.available() <= 0) { asm("nop"); }
-  		int value = Serial.read();
-  		
-  		if (value == -mode) {
-  			break;
-  		}
-  		Serial.flush();
-  		stack_put(value);
-  		Serial.flush();
-		}
-	}
-
-	stack_share(result);	
 }
 `,
 		Args:   1,
@@ -346,7 +333,7 @@ void stack_stdin() {
 	"NUMBER": is("%s", 1),
 	"BIG": is("%s", 1),
 	
-	"SIZE":   is("%s->length", 1),
+	"SIZE":   is("%s->index[length_pos]", 1),
 	"ERRORS":  is("ERROR", 1),
 
 	"SOFTWARE": Instruction{
@@ -385,14 +372,14 @@ void stack_stdin() {
 	"POP":   is("int %s = stack_pop();", 1),
 	"PLACE": is("activearray = %s;", 1),
 
-	"ARRAY":  is("Array *%s = stack_array(0);", 1),
+	"ARRAY":  is("Block *%s = stack_array(0);", 1),
 	"MAKE":  is("stack_share(stack_array(stack_pull()));"),
 	"RENAME": is("%s = activearray;", 1),
 	
 	"RELOAD": is("%s = stack.take();", 1),
 
 	"SHARE": is("stack_share(%s);", 1),
-	"GRAB":  is("Array *%s = stack_grab();", 1),
+	"GRAB":  is("Block *%s = stack_grab();", 1),
 
 	"RELAY": is("stack_relay(%s);", 1),
 	"TAKE":  is("int (*%s)() = stack_take();", 1),
@@ -428,7 +415,7 @@ void stack_stdin() {
 
 	"RUN":  is("%s();", 1),
 	
-	"DATA":  is("Array %s[]=%s;", 2),
+	"DATA":  is("Block %s[]=%s;", 2),
 	"STRING": Instruction{
 		Args: 1,
 		Data: " ",
