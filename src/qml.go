@@ -17,5 +17,5 @@ func init() {
 	QmlAssembly["QML"] = QmlAssembly["JAVASCRIPT"]
 	delete(QmlAssembly, "JAVASCRIPT")
 
-	RegisterAssembler(QmlAssembly , &Qml, "js", "//")
+	RegisterAssembler(QmlAssembly , &Qml, "qml", "//")
 }
