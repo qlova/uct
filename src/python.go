@@ -20,6 +20,11 @@ var Python bool
 func init() {
 	flag.BoolVar(&Python, "py", false, "Target Python")
 
+	instruction := PythonAssembly["ELSE"]
+	instruction.Pass = "pass\n"
+	instruction.Check = "IF"
+	PythonAssembly["ELSE"] = instruction
+
 	RegisterAssembler(PythonAssembly, &Python, "py", "#")
 
 	for _, word := range PythonReserved {
@@ -62,7 +67,7 @@ var PythonAssembly = Assemblable{
 	"FUNCTION": is("def %s(stack):", 1, 1),
 	"RETURN": Instruction{
 		Pass: "pass\n",
-		Check: "FUNCTION",
+		
 		Indented:    1,
 		Data:        "\n",
 		Indent:      -1,
