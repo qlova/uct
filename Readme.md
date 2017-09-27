@@ -70,7 +70,7 @@ These are the official supported lanuages for development and testing.
 |Java	   |  YES  |    YES     |    YES    |
 |Python	   |  YES  |    YES     |    YES    |
 |Rust      |  SOME |    NO      |    NO     |
-|Javascript|  NO   |    NO      |    NO     |
+|Javascript|  NO   |    NO      |    YES    |
 |Arduino   |  NO   |    NO      |    NO     |
 |C++       |  NO   |    NO      |    NO     |
 |Bash	   |  NO   |    NO      |    NO     |

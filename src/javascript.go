@@ -18,7 +18,69 @@ var Javascript bool
 
 func init() {
 	flag.BoolVar(&Javascript, "js", false, "Target Javascript")
-
+	
+	JavascriptAssembly["INBOX"] = Instruction{
+		Args: 0,
+		Data: " ",
+		Function: func(args []string) (result string) {
+			
+			result = "_unwind = setInterval(function() { if (stack.inbox <= 0) { return; } clearInterval(_unwind); stack.share(stack.inbox.shift())\n"
+			
+			JavascriptAssembly["js_Unwind"] = Instruction {
+				Args: JavascriptAssembly["js_Unwind"].Args+1,
+			}
+			
+			return result
+		},
+	}
+	
+	JavascriptAssembly["RETURN"] = Instruction{
+		Indented:    1,
+		Data:        "}\n",
+		Indent:      -1,
+		Else: &Instruction{
+			Data: "return",
+		},
+		Function: func(args []string) (result string) {
+			
+			var times int = JavascriptAssembly["js_Unwind"].Args
+			
+			JavascriptAssembly["js_Unwind"] = Instruction{}
+			
+			
+			
+			for i:=0; i < times; i++ {
+				result += `}, 100)`
+			}
+			
+			return result+"}\n"
+		},
+	}
+	
+	JavascriptAssembly["EXIT"] =  Instruction{
+		Indented:    1,
+		Data:        "}\n",
+		Indent:      -1,
+		Indentation: -1,
+		Else: &Instruction{
+			Data: "return;",
+		},
+		Function: func(args []string) (result string) {
+			
+			var times int = JavascriptAssembly["js_Unwind"].Args
+			
+			JavascriptAssembly["js_Unwind"] = Instruction{}
+			
+			println(times)
+			
+			for i:=0; i < times; i++ {
+				result += `}, 100)`
+			}
+			
+			return result+"}\n"
+		},
+	}
+	
 	RegisterAssembler(JavascriptAssembly, &Javascript, "js", "//")
 
 	for _, word := range JavascriptReserved {
@@ -44,7 +106,7 @@ return bytes;
 		Args: 1,
 	},
 
-	"FOOTER": Instruction{ Data: "main();"},
+	"FOOTER": Instruction{ Data: "if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {} else { main(); }"},
 
 	"FILE": Instruction{
 		Path: "stack.js",
@@ -66,25 +128,8 @@ return bytes;
 		Data:   "function main() {\n\tstack = new Stack()\nbigInt = stack.bigInt",
 		Indent: 1,
 	},
-	"EXIT": Instruction{
-		Indented:    1,
-		Data:        "}\n",
-		Indent:      -1,
-		Indentation: -1,
-		Else: &Instruction{
-			Data: "return;",
-		},
-	},
 
 	"FUNCTION": is("function %s(stack) {", 1, 1),
-	"RETURN": Instruction{
-		Indented:    1,
-		Data:        "}\n",
-		Indent:      -1,
-		Else: &Instruction{
-			Data: "return",
-		},
-	},
 	
 	"SCOPE": is(`stack.relay(stack.pipe(%s))`, 1),
 	
@@ -113,12 +158,12 @@ return bytes;
 	"VAR": is("var %s = bigInt()", 1),
 
 	"OPEN":   is("stack.open()"),
-	"EXECUTE": is("stack.execute()"),
+	"EXECUTE": is("stack.stdout()"),
 	"DELETE": is("stack.delete()"),
 	"LOAD":   is("stack.load()"),
 	"OUT":    is("stack.out()"),
 	"STAT":   is("stack.info()"),
-	"IN":     is("stack.inn()"),
+	"IN":     is("stack.in()"),
 	"STDOUT": is("stack.stdout()"),
 	"STDIN":  is("stack.stdin()"),
 	"HEAP":   is("stack.heap()"),
@@ -138,7 +183,14 @@ return bytes;
 	"RUN":  is("%s(stack)", 1),
 	"DATA": is("var %s = %s", 2),
 
-	"FORK": is("threading.Thread(target=%s, args=(stack.copy(),)).start()\n", 1),
+	//Threading.
+	"PIPE": is("%s = stack.pipe(stack.channel); stack.channel = stack.channel + 1", 1),
+	"FORK": is("stack.thread('%s')", 1),
+	
+	
+	
+	//"INBOX": is("while (stack.inbox.length <= 0) {} stack.share(stack.inbox.shift())", 0),
+	"OUTBOX": is("stack.outbox()", 0),
 
 	"ADD": is("%s = %s.add(%s)", 3),
 	"SUB": is("%s = %s.subtract(%s)", 3),

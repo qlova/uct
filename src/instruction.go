@@ -259,6 +259,19 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		}
 	}
 	
+	if instruction.Indent != 0 {
+		if _, ok := asm["INDENT"]; !ok {
+			asm["INDENT"] = Instruction{}
+		}
+		defer func() {
+			asm["INDENT"] = Instruction{Indent: asm["INDENT"].Indent+instruction.Indent}
+			if asm["INDENT"].Indent < 0 {
+				asm["INDENT"] = Instruction{Indent: 0}
+			}
+		}()
+		
+	}
+	
 	if len(args) != instruction.Args {
 		return nil, errors.New(command+" Argument count mismatch! "+fmt.Sprintf("%v != %v args:%v", len(args), instruction.Args,args))
 	}
@@ -274,19 +287,6 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 	}
 	if len(args) > 0 && strings.Count(instruction.Data, "%s") > instruction.Args {
 		varaidic = append(varaidic, varaidic[len(varaidic)-1])
-	}
-	
-	if instruction.Indent != 0 {
-		if _, ok := asm["INDENT"]; !ok {
-			asm["INDENT"] = Instruction{}
-		}
-		defer func() {
-			asm["INDENT"] = Instruction{Indent: asm["INDENT"].Indent+instruction.Indent}
-			if asm["INDENT"].Indent < 0 {
-				asm["INDENT"] = Instruction{Indent: 0}
-			}
-		}()
-		
 	}
 	
 	//Keep a record of globals.
