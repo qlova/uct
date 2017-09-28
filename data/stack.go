@@ -714,7 +714,7 @@ func  (stack *Stack) Stdin() {
 			if err != nil || len(b) == 0 {
 				stack.Share(&Array{})
 			}
-			if b[len(b)-2] == '\r' {
+			if len(b) > 2 && b[len(b)-2] == '\r' {
 				b = b[:len(b)-1]
 			}
 			stack.Share(&Array{Small:b[:len(b)-1]})
