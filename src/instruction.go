@@ -103,6 +103,8 @@ var Languages = map[string]bool {
 	"QML":true,
 	"RUST": true,
 	"BASH": true,
+	"ARDUINO": true,
+	"CSHARP": true,
 }
 
 var Functions []string
