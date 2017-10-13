@@ -5,7 +5,7 @@ import "strconv"
 import "fmt"
 
 var ArduinoReserved = []string{
-	"char",
+	"char", "on", "off",
 }
 
 //This is the Java compiler for uct.
@@ -107,7 +107,7 @@ Block *stack_array(int l) {
   
   if (arr->index[length_pos] == -2) {
     
-  	arr->index[length_pos] = 0;
+  	arr->index[length_pos] = l;
   	arr->index[refcount_pos] = 0;
   	arr->index[nesting_pos] = nesting;
   	activearray = arr;
@@ -126,6 +126,7 @@ Block *stack_array(int l) {
     }
     
     if (done) {
+    	arr->index[length_pos] = l;
       return arr;
     } else {
       Serial.println(F("[ERROR] Out of memory!"));
@@ -194,6 +195,23 @@ int stack_pop() {
 	}
 }
 
+void stack_heap() {
+	int mode = stack_pull();
+	
+	if (mode == 0) {
+	  int address = (int)stack_array(0);
+		stack_push(address);
+	}
+	if (mode > 0) {
+	  
+	  Block *tmp = mode;
+		stack_share(tmp);
+	}
+	if (mode < 0) {
+	 Block *tmp = mode;
+		tmp->index[length_pos] = -2;
+	}
+}
 
 int stack_get() {
   int index = stack_pull();
@@ -389,21 +407,21 @@ void stack_stdin() {
 
 	"VAR": is("int %s = 0;", 1),
 
-	"OPEN":   is("stack.open();"),
-	"DELETE":   is("stack.delete();"),
-	"EXECUTE":   is("stack.execute();"),
-	"LOAD":   is("stack.load();"),
-	"OUT":    is("stack.out();"),
-	"STAT":   is("stack.info();"),
-	"IN":     is("stack.in();"),
+	"OPEN":   is(""),
+	"DELETE":   is(""),
+	"EXECUTE":   is(""),
+	"LOAD":   is(""),
+	"OUT":    is(""),
+	"STAT":   is(""),
+	"IN":     is(""),
 	"STDOUT": is("stack_stdout();"),
 	"STDIN":  is("stack_stdin();"),
-	"HEAP":   is(" "),
-	"LINK":   is("stack.link();"),
-	"CONNECT":   is("stack.connect();"),
-	"SLICE":   is("stack.slice();"),
+	"HEAP":   is("stack_heap();"),
+	"LINK":   is(""),
+	"CONNECT":   is(""),
+	"SLICE":   is(""),
 
-	"CLOSE": is("%s.close();", 1),
+	"CLOSE": is("", 1),
 
 	"LOOP":   is("while (1) { nesting++;", 0, 1),
 	"BREAK":  is("stack_collect(); break;"),
