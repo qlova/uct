@@ -181,6 +181,16 @@ func Assemble(filename string) error {
 			inlines[inlining].Instructions += line+"\n"
 			continue
 		}
+		
+		if _, ok := Languages[tokens[0]]; ok {
+			assembly, err := assembler.Assemble(tokens[0], []string{line[len(tokens[0]):]})
+			if err != nil {
+				return  errors.New(fmt.Sprint(number)+": "+err.Error())
+			}
+			Output.Write(assembly)
+			instruction++
+			continue
+		}
 
 		//Detect labels.
 		if len(tokens[0]) > 0 && tokens[0][len(tokens[0])-1] == ':' {
