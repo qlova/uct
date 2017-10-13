@@ -362,14 +362,18 @@ func (stack *Stack) Load() {
 			switch protocol[0] {
 				case "tcp":
 					listener, err := net.Listen("tcp", ":"+protocol[1])
-					_, variable, _ = net.SplitHostPort(listener.Addr().String())
-					if protocol[1] == "0" {
-						Networks_In[variable] = listener
-					} else {
-						Networks_In[protocol[1]] = listener
-					}
+					
 					if err != nil {
+					
 						stack.ERROR = NewNumber(1)
+						
+					} else {
+						_, variable, _ = net.SplitHostPort(listener.Addr().String())
+						if protocol[1] == "0" {
+							Networks_In[variable] = listener
+						} else {
+							Networks_In[protocol[1]] = listener
+						}
 					}
 				case "dns":
 					//This can be optimised. Check the string.
