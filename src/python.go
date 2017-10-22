@@ -19,6 +19,10 @@ var Python bool
 
 func init() {
 	flag.BoolVar(&Python, "py", false, "Target Python")
+	
+	instruction := PythonAssembly["IF"]
+	instruction.Pass = "pass\n"
+	PythonAssembly["IF"] = instruction
 
 	RegisterAssembler(PythonAssembly, &Python, "py", "#")
 
