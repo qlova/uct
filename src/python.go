@@ -1,4 +1,4 @@
-package main
+package uct
 
 import "flag"
 
@@ -23,6 +23,11 @@ func init() {
 	instruction := PythonAssembly["IF"]
 	instruction.Pass = "pass\n"
 	PythonAssembly["IF"] = instruction
+
+	instruction := PythonAssembly["ELSE"]
+	instruction.Pass = "pass\n"
+	instruction.Check = "IF"
+	PythonAssembly["ELSE"] = instruction
 
 	RegisterAssembler(PythonAssembly, &Python, "py", "#")
 
@@ -66,7 +71,7 @@ var PythonAssembly = Assemblable{
 	"FUNCTION": is("def %s(stack):", 1, 1),
 	"RETURN": Instruction{
 		Pass: "pass\n",
-		Check: "FUNCTION",
+		
 		Indented:    1,
 		Data:        "\n",
 		Indent:      -1,

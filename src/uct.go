@@ -1,5 +1,5 @@
 //This was originally an assembler written by me, I am now bootstrapping Universal Code Translator with this.
-package main
+package uct
 
 import (
 	"os"
@@ -9,7 +9,6 @@ import (
 	"io"
 	"path/filepath"
 	"errors"
-	"flag"
 	"strconv"
 )
 
@@ -64,7 +63,7 @@ var instruction uint = 0 	//The instruction counter.
 var assembler Assembler		//What assembler are we using?
 
 //Output file.
-var output io.Writer
+var Output io.Writer
 var comment string
 
 var inlining string //Are we defining an inline function?
@@ -83,58 +82,34 @@ type registeredAssembler struct {
 	Assembler
 }
 
-var assemblers []registeredAssembler
+var Assemblers []registeredAssembler
 
 func RegisterAssembler(asm Assembler, flag *bool, ext, comment string) {
-	assemblers = append(assemblers, registeredAssembler{Flag:flag, Ext:ext, Assembler: asm, Comment: comment})
+	Assemblers = append(Assemblers, registeredAssembler{Flag:flag, Ext:ext, Assembler: asm, Comment: comment})
 }
 
-func main() {
-	flag.Parse()
-
-	//Set the assembler.
-	for _, asm := range assemblers {
-		if *asm.Flag {
-			assembler = asm.Assembler
-			comment = asm.Comment
-			var extension = filepath.Ext(flag.Arg(0))
-			var err error
-			output, err = os.Create(flag.Arg(0)[0:len(flag.Arg(0))-len(extension)]+"."+asm.Ext)
-			if err != nil {
-				output = os.Stdout
-			} else {
-				os.Chmod(flag.Arg(0)[0:len(flag.Arg(0))-len(extension)]+"."+asm.Ext, 0755)
-			}
-		}
-	}
-	
-	if assembler == nil {
-		os.Stderr.Write([]byte("Please provide an assembler!"))
-		os.Exit(1)
-	}
-	
-	{
-		
-
-		assembler.SetFileName(flag.Arg(0))
-	}
-
-	//Write any necessary headers.
-	output.Write(assembler.Header())
-	
-	//Reset the assembler's instruction count. 
-	err := assemble(flag.Arg(0))
-	if err != nil {
-		os.Stderr.Write([]byte(err.Error()+"\n"))
-		os.Exit(1)
-	}
-	//fmt.Println(aliases)
-	
-	//Write any necessary footers.
-	output.Write(assembler.Footer())
+func SetAssembler(asm registeredAssembler) {
+	assembler = asm.Assembler
+	comment = asm.Comment
 }
 
-func assemble(filename string) error {
+func AssemblerReady() bool {
+	return !(assembler == nil)
+}
+
+func SetFileName(name string) {
+	assembler.SetFileName(name)
+}
+
+func Header() []byte {
+	return assembler.Header()
+}
+
+func Footer() []byte {
+	return assembler.Footer()
+}
+
+func Assemble(filename string) error {
 
 	//Open main.s in the current directory and begin compilation.
 	file, err := os.Open(filename)
@@ -182,7 +157,7 @@ func assemble(filename string) error {
 		if trim := strings.TrimSpace(line); len(trim) > 0 {
 			if trim[0] == '#' {
 				if comment != "" {
-					output.Write([]byte(strings.Replace(line, "#", comment+" ", 1)))
+					Output.Write([]byte(strings.Replace(line, "#", comment+" ", 1)))
 				}
 				continue
 			}
@@ -204,6 +179,16 @@ func assemble(filename string) error {
 				continue
 			}
 			inlines[inlining].Instructions += line+"\n"
+			continue
+		}
+		
+		if _, ok := Languages[tokens[0]]; ok {
+			assembly, err := assembler.Assemble(tokens[0], []string{line[len(tokens[0]):]})
+			if err != nil {
+				return  errors.New(fmt.Sprint(number)+": "+err.Error())
+			}
+			Output.Write(assembly)
+			instruction++
 			continue
 		}
 
@@ -400,7 +385,7 @@ func assemble(filename string) error {
 					return  errors.New(fmt.Sprint(number)+": Import needs a filename.")
 				}
 				if !imported[tokens[1]+".u"] {
-					err := assemble(tokens[1]+".u")
+					err := Assemble(tokens[1]+".u")
 					if err != nil {
 						return errors.New(filename+":"+err.Error())
 					}
@@ -466,7 +451,7 @@ func assemble(filename string) error {
 				if err != nil {
 					return  errors.New(fmt.Sprint(number)+": "+err.Error())
 				}
-				output.Write(assembly)
+				Output.Write(assembly)
 				instruction++
 		}
  	}

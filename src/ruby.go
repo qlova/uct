@@ -1,4 +1,4 @@
-package main
+package uct
 
 import "flag"
 
@@ -67,6 +67,9 @@ var RubyAssembly = Assemblable{
 	
 	"PREFIXGLOBALS": Instruction{
 		Global:   true,
+	},
+	"LOWERCASE": Instruction{
+		Global: true,
 	},
 
 	"FUNCTION": is("def %s(stack)", 1, 1),

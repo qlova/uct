@@ -29,6 +29,23 @@ FUNCTION
 		FUNCTION name
 			#Do something here.
 		RETURN
+
+ERROR
+=======
+	Error is a global value for a thread that is set to a value when an instruction has failed.
+	It is mainly useful for checking whether or not IO operations succeed. (OPEN and LOAD)
+	
+	example:
+		
+		SOFTWARE
+			ARRAY a
+			SHARE a
+			OPEN
+			
+			IF ERROR
+				#open failed!
+			END
+		EXIT
 		
 HEAP
 ======
@@ -54,14 +71,14 @@ HEAP
 		
 PUT/PLACE/POP
 ===========
-	These allow you to add values to stacks.
+	These allow you to add values to arrays.
 	
 	example:
 		
 		SOFTWARE
-			STACK a
+			ARRAY a
 				PUT 1
-			STACK b
+			ARRAY b
 				PUT 1
 			PLACE a
 				PUT 2
@@ -82,7 +99,7 @@ PUSH/PULL
 		FUNCTION echo
 			PULL number
 			
-			STACK text
+			ARRAY text
 				PUT number
 			
 			PASS text
@@ -97,7 +114,7 @@ PUSH/PULL
 
 SHARE/GRAB
 ===========
-	These can be used to pass and take stacks, stacks are threadsafe.
+	These can be used to pass and take arrays.
 	
 	example:
 		FUNCTION echo
@@ -108,6 +125,23 @@ SHARE/GRAB
 	
 		#This will print 'a'
 		SOFTWARE
+		
+SCOPE/RUN
+=======
+	Transforms a function defined with the function instruction into a pipe.
+	
+	example:
+		FUNCTION f
+			
+		RETURN
+		
+		SOFTWARE
+			SCOPE f
+			TAKE pipe
+			
+			#This runs f()
+			RUN pipe
+		EXIT
 			
 
 RELAY/TAKE
@@ -132,41 +166,17 @@ RELAY/TAKE
 			
 			RUN echo
 		EXIT
-
-# WIP
-
-RING/LINK/NEXT/SELECT
-=======================
-	This is a data structure for IO devices.
-	Select will select a device which is ready to recieve. (Blocking)
-	The call to next after this will give you that file.
-	
-	
-	example:
-	
-		SOFTWARE
-			RING files
-				LINK file
-				SELECT file
-				
-			RELAY file
-			IN
-			
-			
-			NEXT file
-			
-		EXIT
 	
 		
 		
 GET
 =====
-	The get command will index a stack.
+	The get command will index an array.
 
 	example:
 	
 		SOFTWARE
-			STACK items
+			ARRAY items
 				PUT 22
 				PUT 11
 				PUSH 0
@@ -176,12 +186,12 @@ GET
 		
 SET
 =====
-	The set command will modify a string.
+	The set command will modify an array.
 
 	example:
 	
 		SOFTWARE
-			STACK ages
+			ARRAY ages
 				PUT 35
 				PUT 16
 				PUT 24
@@ -205,17 +215,17 @@ VAR
 			#a=0 and b=10
 		EXIT
 
-STACK/RESTACK
+ARRAY/RENAME
 ===============
-	Initialise a stack.
+	Initialise an array.
 	
 	example:
 		
 		SOFTWARE
-			STACK A
-			STACK B
+			ARRAY A
+			ARRAY B
 			SHARE B
-			RESTACK A
+			RENAME A
 			# A = B
 		END
 
@@ -323,13 +333,14 @@ CLOSE
 LOAD
 ====
 	Loads a string from the system.
+	Also loads command line arguments if the array passed to it consists of one element (the nth command line argument).
 	
 	example:
 		
-		STRINGDATA home "$HOME"
+		DATA home "$HOME"
 		
 		SOFTWARE
-			PUSHSTRING home
+			SHARE home
 			LOAD
 			STDOUT
 		END
@@ -440,17 +451,27 @@ JOIN
 			STDOUT # Will output "First Last"
 		EXIT
 
-FORK
+FORK, INBOX, OUTBOX
 ====
-	Executes a function with a copy of the stack, that function will run independantly.
+	Threading instructions.
+	Fork Executes a function with a copy of the stack, that function will run independantly.|
+	Inbox blocks and recieves messages from threads, outbox is used within a thread and sends messages to the parent thread.
 	
 	example:
 		FUNCTION myfunction
 			#Do something here.
+			ARRAY result
+				PUT '!'
+			SHARE result
+			OUTBOX
 		RETURN
 		
 		SOFTWARE
 			FORK myfunction
+
+			INBOX
+			STDOUT
+			#Prints '!'
 		EXIT
 
 

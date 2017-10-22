@@ -68,15 +68,17 @@ These are the official supported lanuages for development and testing.
 |----------|-------|------------|-----------|
 |Go		   |  YES  |    YES     |    YES    |
 |Java	   |  YES  |    YES     |    YES    |
-|Javascript|  NO   |    NO      |    NO     |
 |Python	   |  YES  |    YES     |    YES    |
 |Rust      |  SOME |    NO      |    NO     |
+|Javascript|  NO   |    NO      |    YES    |
+|Arduino   |  NO   |    NO      |    NO     |
+|C++       |  NO   |    NO      |    NO     |
+|Bash	   |  NO   |    NO      |    NO     |
 
 These targets are currently not enabled, they have been in the past and will be added again in a future release.
 
 | Language |  I/O  | Networking | Threading |
 |----------|-------|------------|-----------|
-|Bash	   |  SOME |     NO     |    NO     |
 |Ruby	   |  SOME |     NO     |    NO     |
 |C#		   |  SOME |     NO     |    NO     |
 |Lua       |  SOME |     NO     |    NO     |
