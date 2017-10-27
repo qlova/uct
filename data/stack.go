@@ -103,6 +103,7 @@ func (stack *Stack) Execute() {
 	out, err := exec.Command("sh", "-c", text).Output()
     if err != nil {
         stack.ERROR = NewNumber(1)
+        stack.Share(&Array{})
 		return
     }
     
@@ -1014,7 +1015,9 @@ func (z *Pipe) Init() {
 }
 
 func (pipe *Pipe) Exe(stack *Stack) {
-	pipe.Function(stack)
+	if pipe.Function != nil {
+		pipe.Function(stack)
+	}
 }
 
 func (pipe *Pipe) Close() {
