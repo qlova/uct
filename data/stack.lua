@@ -163,8 +163,8 @@ end
 function Stack:grabstring()
 	local s = table.remove(self.arrays)
 	local name = ""
-	for i = 1, #text do
-		name = name..string.char(tonumber(tostring(text[i])))
+	for i = 1, #s do
+		name = name..string.char(tonumber(tostring(s[i])))
 	end
 	return name
 end
@@ -221,14 +221,14 @@ end
 function Stack:heap()
 	local address = self:pull()
 	if address > bigint(0) then
-		self:share(self.theheap[(tonumber(tostring(address)))%(#self.theheap)])
-	elseif address < 0 then
+		self:share(self.theheap[(tonumber(tostring(address)))%(#self.theheap+1)])
+	elseif address < bigint(0) then
 		self.theheap[(-tonumber(tostring(address)))%(#self.theheap+1)] = nil
 		table.insert(self.heaproom, -address) 
 	else
 		if #self.heaproom > 0 then
 			address = table.remove(self.heaproom)
-			self.theheap[(tonumber(tostring(address)))%(#self.theheap)] = self:grab()
+			self.theheap[(tonumber(tostring(address)))%(#self.theheap+1)] = self:grab()
 			self:push(address)
 		else 
 			table.insert(self.theheap, self:grab())
@@ -366,10 +366,12 @@ function join(...)
     end
     return t
 end
-function alloc(n)
+function make(n)
 	local a = {}
-    setmetatable(a,{__len=function() return n end})
-    return a
+    for i=1,n+1 do
+	  a[i]=bigint(0)
+	end
+	return a
 end
 --
 -- Copyright (c) 2010 Ted Unangst <ted.unangst@gmail.com>
@@ -825,13 +827,14 @@ local function makestr(bi, s)
 end
 local function biginttostring(bi)
 	local s = {}
+	local sign = bi.sign
 	if bi < bigint(0) then
 		bi = negate(bi)
 	end
 	makestr(bi, s)
 	s = table.concat(s):gsub("^0*", "")
 	if s == "" then s = "0" end
-	if bi < bigint(0) then
+	if sign == -1 then
 		return "-"..s
 	else 
 		return s
