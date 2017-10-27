@@ -183,7 +183,7 @@ func Assemble(filename string) error {
 		}
 		
 		if _, ok := Languages[tokens[0]]; ok {
-			assembly, err := assembler.Assemble(tokens[0], []string{line[len(tokens[0]):]})
+			assembly, err := assembler.Assemble(tokens[0], []string{line[len(tokens[0])+1:]})
 			if err != nil {
 				return  errors.New(fmt.Sprint(number)+": "+err.Error())
 			}

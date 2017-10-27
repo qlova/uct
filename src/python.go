@@ -24,7 +24,7 @@ func init() {
 	instruction.Pass = "pass\n"
 	PythonAssembly["IF"] = instruction
 
-	instruction := PythonAssembly["ELSE"]
+	instruction = PythonAssembly["ELSE"]
 	instruction.Pass = "pass\n"
 	instruction.Check = "IF"
 	PythonAssembly["ELSE"] = instruction
