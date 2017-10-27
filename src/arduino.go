@@ -5,7 +5,7 @@ import "strconv"
 import "fmt"
 
 var ArduinoReserved = []string{
-	"char", "on", "off",
+	"char", "on", "off", "lcd",
 }
 
 //This is the Java compiler for uct.
@@ -47,7 +47,7 @@ Block *activearray;
 
 Block *arrays[5];
 int array_pointer;
-int numbers[5];
+int numbers[10];
 int number_pointer;
 
 int (*pipes[5])();
@@ -195,6 +195,12 @@ int stack_pop() {
 	}
 }
 
+void stack_share(Block *arr) {
+  arrays[array_pointer] = arr;
+  arr->index[refcount_pos]++;
+  array_pointer++;
+}
+
 void stack_heap() {
 	int mode = stack_pull();
 	
@@ -249,12 +255,6 @@ void stack_relay(int (*pipe)()) {
 int (*stack_take())() {
   pipe_pointer--;
   return pipes[pipe_pointer]; 
-}
-
-void stack_share(Block *arr) {
-  arrays[array_pointer] = arr;
-  arr->index[refcount_pos]++;
-  array_pointer++;
 }
 
 int powint(int x, int y)
