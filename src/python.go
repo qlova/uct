@@ -28,6 +28,11 @@ func init() {
 	instruction.Pass = "pass\n"
 	instruction.Check = "IF"
 	PythonAssembly["ELSE"] = instruction
+	
+	instruction = PythonAssembly["RETURN"]
+	instruction.Pass = "pass\n"
+	instruction.Check = "FUNCTION"
+	PythonAssembly["RETURN"] = instruction
 
 	RegisterAssembler(PythonAssembly, &Python, "py", "#")
 
