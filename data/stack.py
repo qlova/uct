@@ -436,7 +436,7 @@ class Stack:
 	def stdout(self):
 		text = self.grab()
 		for i in range(0, len(text)):
-			print(chr(text[i]), end="")
+			sys.stdout.buffer.write(bytes([text[i]]))
 
 	def stdin(self):
 		length = self.pull()
