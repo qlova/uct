@@ -314,11 +314,12 @@ func Assemble(filename string) error {
 							tokens[i] = token
 							v = true
 						case '-':
-							if _, err := strconv.Atoi(token); err != nil {
+							/*if _, err := strconv.Atoi(token); err != nil && err != strconv.ErrRange {
 								token = strings.Replace(token, string(c), "_minus_", -1)
 								tokens[i] = token
 								v = true
-							}
+								
+							}*/
 						case '/':
 							token = strings.Replace(token, string(c), "_over_", -1)
 							tokens[i] = token

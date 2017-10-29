@@ -41,7 +41,7 @@ var GoAssembly = Assemblable{
 	"GO": Instruction{All:true},
 
 	"NUMBER": is("NewNumber(%s)", 1),
-	"BIG": 	is("BigInt(`%s`)", 1),
+	"BIG": 	is("NewNumberFromString(`%s`)", 1),
 	"SIZE":   is("%s.Len()", 1),
 	"STRING": is("NewStringArray(%s)", 1),
 	"ERRORS":  is("stack.ERROR", 1),

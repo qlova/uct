@@ -746,6 +746,14 @@ func NewNumber(n int) Number {
 	return Number{Small:int64(n)}
 }
 
+func NewNumberFromString(n string) Number {
+	var num = Number{}
+	num.Int = big.NewInt(0)
+	num.SetString(n, 10)
+
+	return num
+}
+
 func (z *Number) Add(a, b Number) {
 	z.Int = big.NewInt(0)
 	if ca, cb := a.Int == nil, b.Int == nil; ca || cb {
