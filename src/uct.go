@@ -9,7 +9,7 @@ import (
 	"io"
 	"path/filepath"
 	"errors"
-	"strconv"
+	//"strconv"
 )
 
 //Map of aliases, we store all replacements in this map.
@@ -182,7 +182,7 @@ func Assemble(filename string) error {
 			continue
 		}
 		
-		if _, ok := Languages[tokens[0]]; ok {
+		if _, ok := Languages[tokens[0]]; ok && len(line) > len(tokens[0]) {
 			assembly, err := assembler.Assemble(tokens[0], []string{line[len(tokens[0])+1:]})
 			if err != nil {
 				return  errors.New(fmt.Sprint(number)+": "+err.Error())
