@@ -66,7 +66,7 @@ func (stack *Stack) Copy() (n *Stack) {
 		copy(n.Arrays[i].Big, stack.Arrays[i].Big)
 	}
 	
-	n.Outbox = make(chan *Array)
+	n.Outbox = make(chan *Array, 1)
 	stack.Inbox = n.Outbox
 	
 	n.Pipes = make([]*Pipe, len(stack.Pipes))

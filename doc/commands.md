@@ -2,6 +2,20 @@
 
 This document will go through the available commands in uct assembly.
 
+There are two operators.
+    '#' will provide the length of an array.
+        
+        #Returns the length of 'a' as it's exit code.
+        SOFTWARE 
+            ARRAY a
+            PUT 1
+            PUT 1
+            
+            VAR length #a
+            
+            ADD ERROR 0 length
+        EXIT
+
 SOFTWARE/EXIT
 =======
 	This is the entrypoint of your application. The close command will exit the software.
@@ -251,6 +265,35 @@ OPEN
 			#it contains the input/output scope.
 		END
 
+READY
+=====
+    READY will PUSH 1 if a pipe or command is ready for reading, 0 otherwise.
+    DATA file "file.txt"
+    
+    SOFTWARE #Prints the first line of a file when it is ready to be read.
+        SHARE file
+        OPEN
+        TAKE f
+        
+        IF ERROR
+            EXIT
+        END
+        
+        SHARE f
+        READY f
+        PULL ready
+        
+        LOOP 
+            IF ready
+                PUSH 0
+                IN 
+                STDOUT
+            END
+        
+            //Background work...
+        REPEAT
+    EXIY
+		
 OUT
 ===
 	Sends a value to an output.
@@ -451,11 +494,12 @@ JOIN
 			STDOUT # Will output "First Last"
 		EXIT
 
-FORK, INBOX, OUTBOX
+FORK, INBOX, OUTBOX, READYBOX
 ====
 	Threading instructions.
 	Fork Executes a function with a copy of the stack, that function will run independantly.|
 	Inbox blocks and recieves messages from threads, outbox is used within a thread and sends messages to the parent thread.
+	Readybox is a function that returns 1 if the inbox has a message waiting and 0 otherwise.
 	
 	example:
 		FUNCTION myfunction
@@ -473,6 +517,7 @@ FORK, INBOX, OUTBOX
 			STDOUT
 			#Prints '!'
 		EXIT
+
 
 
 ADD, SUB, MUL, DIV, MOD, POW

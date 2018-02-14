@@ -112,6 +112,7 @@ var PythonAssembly = Assemblable{
 
 	"PIPE": is("%s = stack.queue()", 1),
 	"INBOX":   is("stack.share(stack.inbox.get(True))\nstack.inbox.task_done()"),
+	"READYBOX": is("stack.push(stack.inbox.qsize())"),
 	"OUTBOX":   is("stack.outbox.put(stack.grab())"),
 
 	"EVAL": is("eval(bytes(stack.grab()).decode()+'(stack)')"),

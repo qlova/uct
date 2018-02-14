@@ -59,7 +59,7 @@ var JavaAssembly = Assemblable{
 	},
 	"EXIT": Instruction{
 		Indented:    2,
-		Data:        "}\n",
+		Data:        "System.exit(stack.ERROR.intValue()); }\n",
 		Indent:      -1,
 		Indentation: -1,
 		Else: &Instruction{
@@ -105,6 +105,11 @@ var JavaAssembly = Assemblable{
 	"SET": is("stack.set(%s);", 1),
 
 	"VAR": is("Stack.Number %s = new Stack.Number();", 1),
+	
+	//Threading.
+	"INBOX":   is("try { stack.share(stack.inbox.take()); } catch(InterruptedException  e) { }"),
+	"READYBOX":   is("stack.push(new Stack.Number(stack.inbox.size())); "),
+	"OUTBOX":   is("try { stack.outbox.put(stack.grab()); } catch(InterruptedException  e) { }"),
 
 	"OPEN":   is("stack.open();"),
 	"DELETE":   is("stack.delete();"),

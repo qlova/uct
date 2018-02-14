@@ -16,6 +16,7 @@ import java.security.SecureRandom;
 //This is for threading.
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
 
 //This is the Java stack implementation.
 // It holds arrays for the 4 types:
@@ -40,6 +41,9 @@ public class Stack {
 
     static Opener              opener;
     static Loader               loader;
+    
+    ArrayBlockingQueue<Array> inbox;
+    ArrayBlockingQueue<Array> outbox;
     
 
     //This hashtable keeps track of Servers currently listening on the specified port.
@@ -91,6 +95,9 @@ public class Stack {
             n.Arrays.List.set(i, new Array());
             n.Arrays.List.get(i).List = new ArrayList<>(Arrays.List.get(i).List);
         }
+        
+        n.outbox = new ArrayBlockingQueue<Array>(1);
+        inbox = n.outbox;
 
         n.Pipes = new PipeArray();
         n.Pipes.List = new ArrayList<>(Pipes.List);

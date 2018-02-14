@@ -43,6 +43,7 @@ var GoAssembly = Assemblable{
 	"NUMBER": is("NewNumber(%s)", 1),
 	"BIG": 	is("NewNumberFromString(`%s`)", 1),
 	"SIZE":   is("%s.Len()", 1),
+	//"READY":   is(),
 	"STRING": is("NewStringArray(%s)", 1),
 	"ERRORS":  is("stack.ERROR", 1),
 	
@@ -109,6 +110,7 @@ var GoAssembly = Assemblable{
 	"VAR": is("var %s Number", 1),
 
 	"INBOX":   is("stack.Share(<- stack.Inbox)"),
+	"READYBOX":   is("stack.Push(NewNumber(len(stack.Inbox)))"),
 	"OUTBOX":   is("stack.Outbox <- stack.Grab()"),
 
 	"OPEN":   is("stack.Open()"),
