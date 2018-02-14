@@ -334,6 +334,12 @@ func Assemble(filename string) error {
 								tokens[i] = token
 								v = true
 							}
+                        case ']', '[':
+							if ii != len(token)-1 {
+								token = strings.Replace(token, string(c), "_b_", -1)
+								tokens[i] = token
+								v = true
+							}
 						case '<':
 							 token = strings.Replace(token, string(c), "_lt_", -1)
 							tokens[i] = token
