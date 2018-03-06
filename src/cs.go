@@ -98,7 +98,7 @@ var CSAssembly = Assemblable{
 
 	"ARRAY":  is("stack.Array %s = s.array();", 1),
 	"MAKE":  is("s.share(new stack.Array(((int)s.pull())));"),
-	"RENAME": is("%s = s.ActiveArray;", 1),
+	"RENAME": is("%s = s.grab();", 1),
 	
 	"RELOAD": is("%s = s.take();", 1),
 

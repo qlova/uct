@@ -367,7 +367,7 @@ void stack_stdin() {
 
 	"ARRAY":  is("Block *%s = stack_array(0);", 1),
 	"MAKE":  is("stack_share(stack_array(stack_pull()));"),
-	"RENAME": is("%s = activearray;", 1),
+	"RENAME": is("%s = stack_grab();", 1),
 	
 	"RELOAD": is("%s = stack.take();", 1),
 

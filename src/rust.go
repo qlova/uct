@@ -106,7 +106,7 @@ use stack::Pointer;
 	"PLACE": is("stack.ActiveArray.address = %s.address;", 1),
 	"ARRAY":  is("let mut %s = stack.Array();", 1),
 	"MAKE":  is("stack.Make();"),
-	"RENAME": is("%s = stack.ActiveArray.clone(); stack.Library[stack.ActiveArray.address].set(stack.Library[stack.ActiveArray.address].get()+1);", 1),
+	"RENAME": is("%s = stack.Grab();", 1),
 	"RELOAD": is("%s = stack.Take();", 1),
 
 	"SHARE": is("stack.Share(%s.clone());", 1),

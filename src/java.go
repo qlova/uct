@@ -91,7 +91,7 @@ var JavaAssembly = Assemblable{
 
 	"ARRAY":  is("Stack.Array %s = stack.array();", 1),
 	"MAKE":  is("stack.share(new Stack.Array(stack.pull().intValue()));"),
-	"RENAME": is("%s = stack.ActiveArray;", 1),
+	"RENAME": is("%s = stack.grab();", 1),
 	
 	"RELOAD": is("%s = stack.take();", 1),
 

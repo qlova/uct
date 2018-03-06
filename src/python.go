@@ -96,7 +96,7 @@ var PythonAssembly = Assemblable{
 	"POP":   is("%s = stack.pop()", 1),
 	"PLACE": is("stack.activearray = %s", 1),
 	"ARRAY":  is("%s = stack.array()", 1),
-	"RENAME": is("%s = stack.activearray", 1),
+	"RENAME": is("%s = stack.grab()", 1),
 	"RELOAD": is("%s = stack.take()", 1),
 
 	"SHARE": is("stack.share(%s)", 1),

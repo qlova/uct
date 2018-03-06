@@ -144,7 +144,7 @@ return bytes;
 	"POP":   is("var %s = stack.activearray.pop()", 1),
 	"PLACE": is("stack.activearray = %s", 1),
 	"ARRAY":  is("stack.activearray = []; var %s = stack.activearray", 1),
-	"RENAME": is("%s = stack.activearray", 1),
+	"RENAME": is("%s = stack.grab()", 1),
 	"EVAL": is("eval(stack.grabstring()+'(stack)')"),
 	
 	"RELOAD": is("%s = stack.take()", 1),

@@ -87,7 +87,7 @@ var LuaAssembly = Assemblable{
 	"POP":   is("local %s = stack:pop()", 1),
 	"PLACE": is("stack.activearray = %s", 1),
 	"ARRAY":  is("local %s = stack:array()", 1),
-	"RENAME": is("%s = stack.activearray", 1),
+	"RENAME": is("%s = stack.grab()", 1),
 	"EVAL": is("dostring(stack:grabstring()+'(stack)')"),
 	
 	"RELOAD": is("%s = stack:take()", 1),
