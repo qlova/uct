@@ -710,6 +710,7 @@ func  (stack *Stack) Stdin() {
 			n, err := os.Stdin.Read(b)
 			if err != nil || n <= 0 {
 				stack.Share(&Array{})
+				return
 			}
 			stack.Share(&Array{Small:b})
 		
@@ -718,6 +719,7 @@ func  (stack *Stack) Stdin() {
 			b, err := stdin_reader.ReadBytes('\n')
 			if err != nil || len(b) == 0 {
 				stack.Share(&Array{})
+				return
 			}
 			if len(b) > 2 && b[len(b)-2] == '\r' {
 				b = b[:len(b)-1]
@@ -728,6 +730,7 @@ func  (stack *Stack) Stdin() {
 			b, err := stdin_reader.ReadBytes(byte(-length.Small))
 			if err != nil || len(b) == 0 {
 				stack.Share(&Array{})
+				return
 			}
 			stack.Share(&Array{Small:b[:len(b)-1]})
 	}
