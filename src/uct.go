@@ -116,6 +116,7 @@ func Assemble(filename string) error {
 	if err != nil {
 		return errors.New("Could not find "+filename+" file!"+err.Error())
 	}
+	defer file.Close()
 
 	//Read the first line of the file and check the architecture.
 	reader := bufio.NewReader(file)
