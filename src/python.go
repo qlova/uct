@@ -89,21 +89,21 @@ var PythonAssembly = Assemblable{
 	
 	"EXE": is("%s.exe(stack)", 1),
 
-	"PUSH": is("stack.push(%s)", 1),
-	"PULL": is("%s = stack.pull()", 1),
+	"PUSH": is("stack.numbers.append(%s)", 1),
+	"PULL": is("%s = stack.numbers.pop()", 1),
 
-	"PUT":   is("stack.put(%s)", 1),
-	"POP":   is("%s = stack.pop()", 1),
+	"PUT":   is("stack.activearray.append(%s)", 1),
+	"POP":   is("%s = stack.activearray.pop()", 1),
 	"PLACE": is("stack.activearray = %s", 1),
 	"ARRAY":  is("%s = stack.array()", 1),
 	"RENAME": is("%s = stack.grab()", 1),
 	"RELOAD": is("%s = stack.take()", 1),
 
-	"SHARE": is("stack.share(%s)", 1),
-	"GRAB":  is("%s = stack.grab()", 1),
+	"SHARE": is("stack.arrays.append(%s)", 1),
+	"GRAB":  is("%s = stack.arrays.pop()", 1),
 
-	"RELAY": is("stack.relay(%s)", 1),
-	"TAKE":  is("%s = stack.take()", 1),
+	"RELAY": is("stack.pipes.append(%s)", 1),
+	"TAKE":  is("%s = stack.pipes.pop()", 1),
 
 	"GET": is("%s = stack.get()", 1),
 	"SET": is("stack.set(%s)", 1),
