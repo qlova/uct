@@ -67,7 +67,7 @@ var JavaAssembly = Assemblable{
 		},
 	},
 
-	"FUNCTION": is("static void %s(Stack stack) {", 1, 1),
+	"FUNCTION": is("public static void %s(Stack stack) {", 1, 1),
 	"RETURN": Instruction{
 		Indented:    2,
 		Data:        "}\n",

@@ -105,6 +105,7 @@ var Languages = map[string]bool {
 	"BASH": true,
 	"ARDUINO": true,
 	"CSHARP": true,
+	"ANDROID": true,
 }
 
 var Functions []string
