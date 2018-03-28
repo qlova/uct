@@ -3,6 +3,7 @@ import sys
 import os
 import time
 import queue
+import multiprocessing
 
 #This is a table mapping port strings to serversockets.
 Networks_In = {}
@@ -46,8 +47,8 @@ class Stack:
 		
 		self.map = {}
 		
-		self.inbox = queue.Queue(1)
-		self.outbox = queue.Queue(1)
+		self.inbox = None
+		self.outbox = None
 
 	def copy(self):
 		n = Stack()
@@ -57,8 +58,9 @@ class Stack:
 
 		n.pipes = self.pipes.copy()
 		
-		n.outbox = queue.Queue(1)
-		self.inbox = n.outbox
+		parent_conn, child_conn = multiprocessing.Pipe()
+		n.outbox = child_conn
+		self.inbox = parent_conn
 		
 		return n
 	
@@ -90,7 +92,7 @@ class Stack:
 	
 	def queue(self):
 		p = Pipe()
-		p.q = queue.Queue(1)
+		p.q = multiprocessing.Queue()
 		return p
 
 	def array(self):
@@ -346,8 +348,7 @@ class Stack:
 		pipe = self.take()
 		
 		if pipe.q:
-			pipe.q.put(self.grab(), True)
-			pipe.q.join()
+			pipe.q.put(self.grab())
 			return
 
 		if pipe.file is None and pipe.connection is None:
@@ -388,8 +389,7 @@ class Stack:
 		text = ""
 		
 		if pipe.q:
-			self.share(pipe.q.get(True))
-			pipe.q.task_done()
+			self.share(pipe.q.get())
 			return
 
 		if length == 0:

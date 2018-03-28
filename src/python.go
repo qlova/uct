@@ -44,7 +44,7 @@ func init() {
 var PythonAssembly = Assemblable{
 	//Special commands.
 	"HEADER": Instruction{
-		Data:   "#! /bin/python3\nimport stack\nimport sys\nimport threading",
+		Data:   "#! /bin/python3\nimport stack\nimport sys\nfrom multiprocessing import Process\n",
 		Args: 1,
 	},
 
@@ -67,7 +67,8 @@ var PythonAssembly = Assemblable{
 	"SLICE":  is("stack.slice()"),
 
 	"SOFTWARE": Instruction{
-		Data:   "stack = stack.Stack()\n",
+		Data:   "if __name__ == '__main__':\n\tstack = stack.Stack()\n",
+		Indent: 1,
 	},
 	"EXIT": Instruction{
 		Data:        "sys.exit(stack.ERROR)",
@@ -111,9 +112,10 @@ var PythonAssembly = Assemblable{
 	"VAR": is("%s = 0", 1),
 
 	"PIPE": is("%s = stack.queue()", 1),
-	"INBOX":   is("stack.share(stack.inbox.get(True))\nstack.inbox.task_done()"),
-	"READYBOX": is("stack.push(stack.inbox.qsize())"),
-	"OUTBOX":   is("stack.outbox.put(stack.grab())"),
+	
+	"INBOX":   is("stack.share(stack.inbox.recv())\n"),
+	"READYBOX": is("stack.push(stack.inbox.poll())"),
+	"OUTBOX":   is("stack.outbox.send(stack.grab())"),
 
 	"EVAL": is("eval(bytes(stack.grab()).decode()+'(stack)')"),
 
@@ -143,7 +145,7 @@ var PythonAssembly = Assemblable{
 	"RUN":  is("%s(stack)", 1),
 	"DATA": is("%s = %s", 2),
 
-	"FORK": is("threading.Thread(target=%s, args=(stack.copy(),)).start()\n", 1),
+	"FORK": is("Process(target=%s, args=(stack.copy(),)).start()\n", 1),
 
 	"ADD": is("%s = %s + %s", 3),
 	"SUB": is("%s = %s - %s", 3),
