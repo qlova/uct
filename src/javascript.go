@@ -120,72 +120,72 @@ return bytes;
 	"STRING": is("%s.getBytes()", 1),
 	"ERRORS":  is("stack.ERROR", 1),
 	
-	"LINK":  is("stack.link()"),
-	"CONNECT":  is("stack.connect()"),
-	"SLICE":  is("stack.slice()"),
+	"LINK":  is("stack.link();"),
+	"CONNECT":  is("stack.connect();"),
+	"SLICE":  is("stack.slice();"),
 
 	"SOFTWARE": Instruction{
-		Data:   "function main() {\n\tstack = new Stack()\nbigInt = stack.bigInt",
+		Data:   "function main() {\n\tstack = new Stack();\nbigInt = stack.bigInt;",
 		Indent: 1,
 	},
 
 	"FUNCTION": is("function %s(stack) {", 1, 1),
 	
-	"SCOPE": is(`stack.relay(stack.pipe(%s))`, 1),
+	"SCOPE": is(`stack.relay(stack.pipe(%s));`, 1),
 	
-	"EXE": is("%s.exe(stack)", 1),
+	"EXE": is("%s.exe(stack);", 1),
 
 	//Optimised
-	"PUSH": is("stack.numbers.push(%s)", 1),
-	"PULL": is("var %s = stack.numbers.pop()", 1),
-	"SHARE": is("stack.arrays.push(%s)", 1),
-	"GRAB":  is("var %s = stack.arrays.pop()", 1),
-	"PUT":   is("stack.activearray.push(%s)", 1),
-	"POP":   is("var %s = stack.activearray.pop()", 1),
-	"PLACE": is("stack.activearray = %s", 1),
-	"ARRAY":  is("stack.activearray = []; var %s = stack.activearray", 1),
-	"RENAME": is("%s = stack.grab()", 1),
-	"EVAL": is("eval(stack.grabstring()+'(stack)')"),
+	"PUSH": is("stack.numbers.push(%s);", 1),
+	"PULL": is("var %s = stack.numbers.pop();", 1),
+	"SHARE": is("stack.arrays.push(%s);", 1),
+	"GRAB":  is("var %s = stack.arrays.pop();", 1),
+	"PUT":   is("stack.activearray.push(%s);", 1),
+	"POP":   is("var %s = stack.activearray.pop();", 1),
+	"PLACE": is("stack.activearray = %s;", 1),
+	"ARRAY":  is("stack.activearray = []; var %s = stack.activearray;", 1),
+	"RENAME": is("%s = stack.grab();", 1),
+	"EVAL": is("eval(stack.grabstring()+'(stack)');"),
 	
-	"RELOAD": is("%s = stack.take()", 1),
+	"RELOAD": is("%s = stack.take();", 1),
 
-	"RELAY": is("stack.relay(%s)", 1),
-	"TAKE":  is("var %s = stack.take()", 1),
+	"RELAY": is("stack.relay(%s);", 1),
+	"TAKE":  is("var %s = stack.take();", 1),
 
-	"GET": is("var %s = stack.get()", 1),
-	"SET": is("stack.set(%s)", 1),
+	"GET": is("var %s = stack.get();", 1),
+	"SET": is("stack.set(%s);", 1),
 
-	"VAR": is("var %s = bigInt()", 1),
+	"VAR": is("var %s = bigInt();", 1),
 
-	"OPEN":   is("stack.open()"),
-	"EXECUTE": is("stack.stdout()"),
-	"DELETE": is("stack.delete()"),
-	"LOAD":   is("stack.load()"),
-	"OUT":    is("stack.out()"),
-	"STAT":   is("stack.info()"),
-	"IN":     is("stack.in()"),
-	"STDOUT": is("stack.stdout()"),
-	"STDIN":  is("stack.stdin()"),
-	"HEAP":   is("stack.heap()"),
-	"HEAPIT":   is("stack.heapit()"),
-	"MAKE":   is("stack.share(new Array(stack.pull().toJSNumber()).fill(bigInt.zero))"),
+	"OPEN":   is("stack.open();"),
+	"EXECUTE": is("stack.stdout();"),
+	"DELETE": is("stack.delete();"),
+	"LOAD":   is("stack.load();"),
+	"OUT":    is("stack.out();"),
+	"STAT":   is("stack.info();"),
+	"IN":     is("stack.in();"),
+	"STDOUT": is("stack.stdout();"),
+	"STDIN":  is("stack.stdin();"),
+	"HEAP":   is("stack.heap();"),
+	"HEAPIT":   is("stack.heapit();"),
+	"MAKE":   is("stack.share(new Array(stack.pull().toJSNumber()).fill(bigInt.zero));"),
 
-	"CLOSE": is("%s.close()", 1),
+	"CLOSE": is("%s.close();", 1),
 
 	"LOOP":   is("while (1) {", 0, 1),
-	"BREAK":  is("break"),
+	"BREAK":  is("break;"),
 	"REPEAT": is("}", 0, -1, -1),
 
 	"IF":   is("if (%s != 0) {", 1, 1),
 	"ELSE": is("} else {", 0, 0, -1),
 	"END":  is("}", 0, -1, -1),
 
-	"RUN":  is("%s(stack)", 1),
-	"DATA": is("var %s = %s", 2),
+	"RUN":  is("%s(stack);", 1),
+	"DATA": is("var %s = %s;", 2),
 
 	//Threading.
-	"PIPE": is("%s = stack.pipe(stack.channel); stack.channel = stack.channel + 1", 1),
-	"FORK": is("stack.thread('%s')", 1),
+	"PIPE": is("%s = stack.pipe(stack.channel); stack.channel = stack.channel + 1;", 1),
+	"FORK": is("stack.thread('%s');", 1),
 	
 	
 	
