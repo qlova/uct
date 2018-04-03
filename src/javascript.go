@@ -181,7 +181,7 @@ return bytes;
 	"END":  is("}", 0, -1, -1),
 
 	"RUN":  is("%s(stack);", 1),
-	"DATA": is("var %s = %s;", 2),
+	"DATA": is_data("var %s = [", "%s", ",",  "];"),
 
 	//Threading.
 	"PIPE": is("%s = stack.pipe(stack.channel); stack.channel = stack.channel + 1;", 1),

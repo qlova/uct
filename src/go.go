@@ -140,7 +140,7 @@ var GoAssembly = Assemblable{
 	"END":  is("}", 0, -1, -1),
 
 	"RUN":  is("%s(stack)", 1),
-	"DATA": is("var %s *Array = %s;", 2),
+	"DATA": is_data("var %s *Array = &Array{Big:[]Number{", "%s", ",", "}}"),
 
 	"FORK": is("go %s(stack.Copy())\n", 1),
 

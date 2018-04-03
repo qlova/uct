@@ -338,7 +338,7 @@ slice() {
 	"END":  is("fi", 0, -1, -1),
 
 	"RUN":  is("%s", 1),
-	"DATA": is("%s=%s", 2),
+	"DATA": is_data("%s=(", "%s", ",", ")"),
 
 	"FORK": is("%s &\n", 1),
 

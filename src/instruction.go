@@ -38,6 +38,20 @@ func is(s string, ns ...int) Instruction {
 	return Instruction{Data:s, Args:args, Indent:indent, Indentation:ind}
 }
 
+func is_data(begin, elem, sep, end string) Instruction {
+	return Instruction{Data:" ", Args:-1, Function: func(args []string) string {
+		var asm = fmt.Sprintf(begin, args[0])
+		for i, arg := range args[1:] {
+			asm += fmt.Sprintf(elem, arg)
+			if i < len(args[1:])-1 {
+				asm += sep
+			}
+		}
+		asm += end+"\n"
+		return asm
+	}}
+}
+
 func Reserved() Instruction {
 	return Instruction{}
 }
@@ -275,7 +289,7 @@ func (asm Assemblable) Assemble(command string, args []string) ([]byte, error) {
 		
 	}
 	
-	if len(args) != instruction.Args {
+	if len(args) != instruction.Args && instruction.Args >= 0 {
 		return nil, errors.New(command+" Argument count mismatch! "+fmt.Sprintf("%v != %v args:%v", len(args), instruction.Args,args))
 	}
 	

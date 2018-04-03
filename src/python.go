@@ -44,7 +44,7 @@ func init() {
 var PythonAssembly = Assemblable{
 	//Special commands.
 	"HEADER": Instruction{
-		Data:   "#! /bin/python3\nimport stack\nimport sys\nfrom multiprocessing import Process\n",
+		Data:   "#! /bin/python3\nimport stack\nimport sys\nfrom multiprocessing import Process\ndef i_div(a, b):\treturn a//b",
 		Args: 1,
 	},
 
@@ -143,7 +143,7 @@ var PythonAssembly = Assemblable{
 	"END":  is("\n", 0, -1, -1),
 
 	"RUN":  is("%s(stack)", 1),
-	"DATA": is("%s = %s", 2),
+	"DATA": is_data("%s = [", "%s", ",", "]"),
 
 	"FORK": is("Process(target=%s, args=(stack.copy(),)).start()\n", 1),
 

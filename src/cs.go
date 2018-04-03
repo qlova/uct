@@ -55,7 +55,7 @@ var CSAssembly = Assemblable{
 	//"EVAL": is("Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { new Object() { }.getClass().getEnclosingClass().getDeclaredMethod(s.grab().String(), cArg).invoke(null, s); } catch (Exception e) { throw new RuntimeException(e); }"),
 
 	"NUMBER": is("new BigInteger(%s)", 1),
-	"BIG": is("new BigInteger(%s)", 1),
+	"BIG": is("new BigInteger(\"%s\")", 1),
 	"SIZE":   is("%s.size()", 1),
 	"STRING": is("new stack.Array(%s)", 1),
 	"ERRORS":  is("s.ERROR", 1),
@@ -138,7 +138,7 @@ var CSAssembly = Assemblable{
 	"END":  is("}", 0, -1, -1),
 
 	"RUN":  is("%s(s);", 1),
-	"DATA": is("static stack.Array %s = %s;", 2),
+	"DATA": is_data("static stack.Array %s = new stack.Array(", "%s", ",", ")"),
 
 	"FORK": is("{ Stack s = s.copy(); Stack.ThreadPool.execute(() -> %s(s)); }\n", 1),
 

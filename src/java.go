@@ -48,7 +48,7 @@ var JavaAssembly = Assemblable{
 	"EVAL": is("Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { new Object() { }.getClass().getEnclosingClass().getDeclaredMethod(stack.grab().String(), cArg).invoke(null, stack); } catch (Exception e) { throw new RuntimeException(e); }"),
 
 	"NUMBER": is("new Stack.Number(%s)", 1),
-	"BIG": is("new Stack.Number(%s)", 1),
+	"BIG": is("new Stack.Number(\"%s\")", 1),
 	"SIZE":   is("%s.size()", 1),
 	"STRING": is("new Stack.Array(%s)", 1),
 	"ERRORS":  is("stack.ERROR", 1),
@@ -136,7 +136,7 @@ var JavaAssembly = Assemblable{
 	"END":  is("}", 0, -1, -1),
 
 	"RUN":  is("%s(stack);", 1),
-	"DATA": is("static Stack.Array %s = %s;", 2),
+	"DATA": is_data("static Stack.Array %s = new Stack.Array(", "%s", ",", ");"),
 
 	"FORK": is("{ Stack s = stack.copy(); Stack.ThreadPool.execute(() -> %s(s)); }\n", 1),
 
