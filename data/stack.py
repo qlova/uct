@@ -204,7 +204,7 @@ class Stack:
 			if len(protocol) > 1:
 				if protocol[0] == "tcp":
 					try:
-						address = ('localhost', int(protocol[1]))
+						address = ('', int(protocol[1]))
 						listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 						listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 						listener.bind(address)
