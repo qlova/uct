@@ -88,11 +88,7 @@ function Stack() {
 		if (a.lt(n) && a.gt(bigInt(0))) {
 			return a
 		}
-		var d = a.divide(n)
-		if (d.toJSNumber() == 0 && a.compare(bigInt.zero) == -1 && n.compare(a.negate()) == 1) {
-			return a.minus(n.multiply(bigInt(-1)))
-		}
-		return a.mod(n)
+		return (a.mod(n).plus(n)).mod(n)
 	}
 	
 	this.push = function(v) {
