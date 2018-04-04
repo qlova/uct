@@ -37,6 +37,10 @@ public class Stack {
     Array				ActiveArray;
     ArrayArray			Heap;
     List<Integer>	HeapRoom;
+    
+    PipeArray			HeapIt;
+    List<Integer>	HeapItRoom;
+    
     Hashtable<String, Number> Map;
 
     static Opener              opener;
@@ -80,6 +84,9 @@ public class Stack {
 
         Heap			= new ArrayArray();
         HeapRoom		= new ArrayList<Integer>();
+        
+		HeapIt			= new PipeArray();
+        HeapItRoom		= new ArrayList<Integer>();
         Map				= new Hashtable<String, Number>();
     }
 
@@ -221,6 +228,29 @@ public class Stack {
 			HeapRoom.add(-address.intValue());
 		}
     }
+    
+    void heapit() {
+    	Number address = pull();
+	
+		if (address.intValue() == 0) {
+			if (HeapItRoom.size() > 0) {
+				Integer address2 = HeapItRoom.remove(HeapItRoom.size()-1);
+				
+				HeapIt.List.set(((address2)%(HeapIt.List.size()+1)-1),  take());
+				push(new Number(address2));
+			} else {
+				HeapIt.push(take());
+				push(HeapIt.size());
+			}
+			
+		} else if (address.intValue() > 0) {
+			relay(HeapIt.List.get((address.intValue()%(HeapIt.List.size()+1))-1));
+			
+		} else if (address.intValue() < 0) {
+			HeapIt.List.set(((-address.intValue())%(HeapIt.List.size()+1)-1),  null);
+			HeapItRoom.add(-address.intValue());
+		}
+    }
 
     void stdout() {
         Array text = grab();
@@ -300,6 +330,16 @@ public class Stack {
 			 return;
         }
        
+    }
+    
+    public void scope(String name, Class<?> c) {
+		Class[] cArg = new Class[1]; 
+		cArg[0] = Stack.class; 
+		try { 
+			relay(new Stack.Pipe(c.getDeclaredMethod(name, cArg))); 
+		} catch (NoSuchMethodException e) { 
+			throw new RuntimeException(e); 
+		}
     }
 
     void in() {
@@ -875,24 +915,26 @@ public class Stack {
 
     //Pipe implementation.
     public static class Pipe {
-        String Name;
+		Array data;
+		Method method;
+		
+		//Make these into interface.
+			String Name;
 
-        //Input and Output.
-        InputStream input;
-        OutputStream output;
-        
-        //UDP stuff.
-       MulticastSocket udpsock;
-        boolean udp;
-        InetAddress group;
-        int port;
-        String ip;
+			//Input and Output.
+			InputStream input;
+			OutputStream output;
+			
+			//UDP stuff.
+		MulticastSocket udpsock;
+			boolean udp;
+			InetAddress group;
+			int port;
+			String ip;
 
-        //Types of pipes.
-        File file;
-        Socket socket;
-        
-        Method method;
+			//Types of pipes.
+			File file;
+			Socket socket;
 
         Pipeable external;
 
@@ -902,6 +944,7 @@ public class Stack {
         }
         
         public Pipe() {
+			data = new Array();
         }
 
         void Set(Pipeable p) {
@@ -910,6 +953,7 @@ public class Stack {
         
         
         public Pipe(Method m) {
+			data = new Array();
         	method = m;
         }
         
@@ -939,6 +983,10 @@ public class Stack {
 
         public PipeArray() {
             List = new ArrayList<Pipe>();
+        }
+        
+        public Number size() {
+            return new Number(List.size());
         }
 
         public Pipe pop() {

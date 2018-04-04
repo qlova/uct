@@ -11,6 +11,8 @@ Networks_In = {}
 #This is the UCT Pipe implementation.
 class Pipe:
 	def __init__(self, f=None):
+		self.data		= []
+		
 		self.name 		= ""
 		self.file 		= None
 		self.connection = None

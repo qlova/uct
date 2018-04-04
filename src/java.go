@@ -78,7 +78,7 @@ var JavaAssembly = Assemblable{
 		},
 	},
 	
-	"SCOPE": is(`Class[] cArg = new Class[1]; cArg[0] = Stack.class; try { stack.relay(new Stack.Pipe((new Object() { }.getClass().getEnclosingClass().getDeclaredMethod("%s", cArg)))); } catch (NoSuchMethodException e) { throw new RuntimeException(e); }`, 1),
+	"SCOPE": is(`stack.scope("%s", new Object() {}.getClass().getEnclosingClass());`, 1),
 	
 	"EXE": is("%s.exe(stack);", 1),
 
@@ -121,8 +121,11 @@ var JavaAssembly = Assemblable{
 	"STDOUT": is("stack.stdout();"),
 	"STDIN":  is("stack.stdin();"),
 	"HEAP":   is("stack.heap();"),
-	"LINK":   is("stack.link();"),
-	"CONNECT":   is("stack.connect();"),
+	"HEAPIT":   is("stack.heapit();"),
+	
+	"LINK":   is("stack.take().data = stack.grab();"),
+	"CONNECT":   is("stack.share(stack.take().data);"),
+	
 	"SLICE":   is("stack.slice();"),
 
 	"CLOSE": is("%s.close();", 1),

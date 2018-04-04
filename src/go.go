@@ -76,7 +76,7 @@ var GoAssembly = Assemblable{
 		},
 	},
 	
-	"SCOPE": is(`stack.Relay(&Pipe{Function:%s})`, 1),
+	"SCOPE": is(`stack.Relay(&Pipe{Data: &Array{}, Function:%s})`, 1),
 	
 	"EXE": is("%s.Exe(stack)", 1),
 
@@ -117,8 +117,10 @@ var GoAssembly = Assemblable{
 	"DELETE": is("stack.Delete()"),
 	"MOVE":   is("stack.Move()"),
 	"EXECUTE":is("stack.Execute()"),
-	"LINK":   is("stack.Link()"),
-	"CONNECT":is("stack.Connect()"),
+	
+	"LINK":   is("stack.Take().Data = stack.Grab()"),
+	"CONNECT":is("stack.Share(stack.Take().Data)"),
+	
 	"SLICE":  is("stack.Slice()"),
 	"LOAD":   is("stack.Load()"),
 	"OUT":    is("stack.Out()"),

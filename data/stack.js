@@ -51,6 +51,7 @@ b)).multiply(b)};k.isInstance=function(a){return a instanceof d||a instanceof e}
 function Pipe() {
 	this.name = "";
 	this.function = null;
+	this.data = []
   
 	this.exe = function(stack) {
 		this.function(stack)
@@ -211,6 +212,34 @@ function Stack() {
 			} else {
 				this.theheap.push(this.grab())
 				this.push(bigInt(this.theheap.length))
+			}
+		}
+	}
+	
+	this.heapit = function() {
+		var address = this.pull()
+
+		if (address.toJSNumber() > 0) {
+			var index = this.mod(address, bigInt(this.theitheap.length+1)).toJSNumber() -1
+			
+			//This is just to raise an exception in order to debug issues.
+			if (this.theitheap[index] == undefined) {
+				this.theitheap[index][0] = 1
+			}
+			
+			this.relay(this.theitheap[index])
+		} else if (address.toJSNumber() < 0) {
+			var index = this.mod(address.multiply(bigInt(-1)), bigInt(this.theitheap.length+1)).toJSNumber() -1
+			this.theitheap[index] = undefined
+			this.heapitroom.push(address.multiply(bigInt(-1)))
+		} else {
+			if (this.heapitroom.length > 0) {
+				address = this.heapitroom.pop()
+				this.theitheap[this.mod(address, bigInt(this.theitheap.length+1)).toJSNumber()-1] = this.take()
+				this.push(address)
+			} else {
+				this.theitheap.push(this.take())
+				this.push(bigInt(this.theitheap.length))
 			}
 		}
 	}

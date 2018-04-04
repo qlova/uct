@@ -120,8 +120,9 @@ return bytes;
 	"STRING": is("%s.getBytes()", 1),
 	"ERRORS":  is("stack.ERROR", 1),
 	
-	"LINK":  is("stack.link();"),
-	"CONNECT":  is("stack.connect();"),
+	"LINK":  is("stack.take().data = stack.grab();"),
+	"CONNECT":  is("stack.share(stack.take().data);"),
+	
 	"SLICE":  is("stack.slice();"),
 
 	"SOFTWARE": Instruction{

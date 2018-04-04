@@ -78,6 +78,7 @@ func (stack *Stack) Copy() (n *Stack) {
 func (stack *Stack) Pipe() *Pipe {
 	var pipe Pipe
 	pipe.Channel = make(chan *Array)
+	pipe.Data = &Array{}
 	return &pipe
 }
 
