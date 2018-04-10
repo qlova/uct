@@ -224,8 +224,7 @@ class Stack:
 						variable = hosts[0]
 					except:
 						try:
-							hosts = socket.gethostbyname(protocol[1])
-							variable = hosts[2].join(" ")
+							variable = socket.gethostbyname(protocol[1])
 						except:
 							self.ERROR = 1
 
