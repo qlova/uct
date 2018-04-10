@@ -1003,23 +1003,28 @@ func (z Number) ToInt() int {
 
 
 type Pipe struct {
-	Name string
-	Size int
-	
-	Pipe io.ReadWriteCloser
-	In io.ReadCloser
-	Out io.WriteCloser
-	
-	Channel chan *Array
-	
-	Connection net.Conn
-	Reader *bufio.Reader
-	
-	//Other protocols.
-	Files []os.FileInfo
-	Index int
-	
 	Function func(*Stack)
+	Data *Array
+	
+	//This stuff needs to be wrapped up in an interface.
+		Name string
+		
+		Size int
+		
+		Pipe io.ReadWriteCloser
+		In io.ReadCloser
+		Out io.WriteCloser
+		
+		Channel chan *Array
+		
+		Connection net.Conn
+		Reader *bufio.Reader
+		
+		//Other protocols.
+		Files []os.FileInfo
+		Index int
+	
+
 }
 
 func (z *Pipe) Init() {
