@@ -407,7 +407,7 @@ public class Stack {
         			share(new Array(input));
         			return;
         		}
-        		input += ((char)(b[0]));
+        		input += ((char)( b[0] & 0xff));
         	}
         	
         	
@@ -437,7 +437,7 @@ public class Stack {
         			share(new Array(input));
         			return;
         		}
-        		input += ((char)(b[0]));
+        		input += ((char)(b[0] & 0xff));
         	}
         
         
@@ -1063,7 +1063,7 @@ public class Stack {
         public Array(byte[] s) {
             List = new ArrayList<Number>();
             for (int i = 0; i < s.length; ++i) {
-                List.add(new Number(s[i]));
+                List.add(new Number(s[i] & 0xff));
             }
         }
 
