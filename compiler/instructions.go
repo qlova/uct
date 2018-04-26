@@ -11,6 +11,10 @@ type Base interface{
 	Pull(c *Compiler, name string)
 	Drop(c *Compiler)
 	Free(c *Compiler)
+	
+	//Attach/Detach from a list.
+	Attach(c *Compiler)
+	Detach(c *Compiler)
 }
 
 func WriteString(output io.Writer, data string) {
