@@ -24,12 +24,18 @@ func (c *Compiler) scanExpression() Type {
 		}
 	}
 	
-	/*c.RaiseError(Translatable{
-			English: "Unknown Expression: "+c.Token(),
-	})*/
-	return Type{Name: NoTranslation(c.Token())}
+	
+	return Type{Name: NoTranslation(c.Token()), Fake: true}
 }
 
 func (c *Compiler) ScanExpression() Type {
-	return c.Shunt(c.scanExpression(), 0)
+	var result = c.Shunt(c.scanExpression(), 0)
+	
+	if result.Fake {
+		c.RaiseError(Translatable{
+				English: "Unknown Expression: "+result.Name[c.Language],
+		})
+	}
+	
+	return result
 }
