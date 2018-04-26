@@ -18,6 +18,13 @@ func (c *Compiler) Shunt(t Type, precedence int) Type {
 			peek = c.Peek()
 		}
 		
+		if t.Shunt != nil {
+			if result := t.Shunt(c, op.Symbol, t, rhs); result != nil {
+				t = *result
+				continue
+			}
+		}
+		
 		if shunt, ok := t.Shunts[op.Symbol]; ok {
 			t = shunt(c, rhs)
 		} else {
