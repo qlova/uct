@@ -14,6 +14,7 @@ class Std:
 		sys.stdout.buffer.write(bytes)
 		return True
 	def read(self, size):
+		sys.stdout.buffer.flush()
 		return sys.stdin.buffer.read(size)
 	
 class WrappedFunction:
