@@ -102,6 +102,14 @@ func (c *Compiler) Scan() string {
 	return token
 }
 
+func (c *Compiler) ScanIf(test string) bool {
+	if c.Peek() == test {
+		c.Scan()
+		return true
+	}
+	return false
+}
+
 func (c *Compiler) AddInput(input io.Reader) {
 	var s = new(scanner.Scanner)
 	s.Init(input)
