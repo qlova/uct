@@ -10,7 +10,7 @@ func (d DefaultBase) Push(c *Compiler, name string) {
 			c.PushList(name)
 		case PIPE:
 			c.PushPipe(name)
-		
+		case NULL:
 		default:
 			panic("Invalid default base!")
 	}
@@ -24,7 +24,7 @@ func (d DefaultBase) Pull(c *Compiler, name string) {
 			c.PullList(name)
 		case PIPE:
 			c.PullPipe(name)
-		
+		case NULL:
 		default:
 			panic("Invalid default base!")
 	}
@@ -38,7 +38,7 @@ func (d DefaultBase) Free(c *Compiler) {
 			c.FreeList()
 		case PIPE:
 			c.FreePipe()
-		
+		case NULL:
 		default:
 			panic("Invalid default base!")
 	}
@@ -52,14 +52,47 @@ func (d DefaultBase) Drop(c *Compiler) {
 			c.DropList()
 		case PIPE:
 			c.DropPipe()
-		
+		case NULL:
+		default:
+			panic("Invalid default base!")
+	}
+}
+
+func (d DefaultBase) Attach(c *Compiler) {
+	switch d {
+		case INT:
+			c.Set()
+		case LIST:
+			c.Int(0)
+			c.HeapList()
+		case PIPE:
+			c.Int(0)
+			c.HeapPipe()
+		case NULL:
+		default:
+			panic("Invalid default base!")
+	}
+}
+
+func (d DefaultBase) Detach(c *Compiler) {
+	switch d {
+		case INT:
+			c.Get()
+		case LIST:
+			c.Get()
+			c.HeapList()
+		case PIPE:
+			c.Get()
+			c.HeapPipe()
+		case NULL:
 		default:
 			panic("Invalid default base!")
 	}
 }
 
 const (
-	INT DefaultBase = iota
+	NULL DefaultBase = iota
+	INT 
 	LIST
 	PIPE
 )
@@ -76,9 +109,14 @@ type Type struct {
 	Base Base
 	
 	Immutable bool
-	Defined bool
+	Fake bool
+	Constant bool
+	
+	Cast func(c *Compiler, a Type, b Type) bool
+	Shunt func(c *Compiler, symbol string, a Type, b Type) *Type
 	
 	Casts []func(c *Compiler, t Type) bool
+	
 	Shunts map[string]func(*Compiler, Type) Type
 	
 	Collect func(*Compiler)
@@ -100,6 +138,11 @@ func (t Type) Equals(b Type) bool {
 	return false
 }
  
+func (t Type) With(d Data) Type {
+	t.Data = d
+	return t
+}
+ 
 func (c *Compiler) GetType(name string) *Type {
 	for i, t := range c.Types {
 		if t.Name[c.Language] == name {
@@ -111,6 +154,10 @@ func (c *Compiler) GetType(name string) *Type {
 
 func (c *Compiler) Cast(a, b Type) bool {
 	if a.Equals(b) {
+		return true
+	}
+	
+	if a.Cast != nil &&  a.Cast(c, a, b) {
 		return true
 	}
 	
