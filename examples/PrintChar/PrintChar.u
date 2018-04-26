@@ -1,7 +1,0 @@
-SOFTWARE
-	ARRAY text
-		PUT 97
-		PUT 10
-	SHARE text
-	STDOUT
-EXIT
