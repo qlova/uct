@@ -7,6 +7,16 @@ type Statement struct {
 	Detect func(*Compiler) bool
 }
 
+func (c *Compiler) ScanEmbeddedStatement(t Type) {
+	if t.EmbeddedStatement == nil {
+		c.RaiseError(Translatable{
+			English: "Cannot embed type "+t.Name[c.Language],
+		})
+	}
+	
+	t.EmbeddedStatement(c, t)
+}
+
 func (c *Compiler) ScanStatement() {
 	var token = c.Scan()
 	
