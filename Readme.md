@@ -1,17 +1,9 @@
 # Universal compiler and translator
 
-UCT is an innovative new technology for computer science.
-
 The technology consists of Universal Assembly and a Universal Compiler.
-With UCT, it is possible to target other programming languages. What this means, is that you can write a program in Universal Assembly and then compile it into a language such as Python or Java. For a list of targets, see below:
+With UCT, it is possible to target other programming languages. What this means, is that you can write a compiler with UCT and then compile it into a language such as Python or Java. For a list of targets, see below:
 
-## Philosophy/Rant (Trigger warning!)
-Most Programming languages are stupid.  
-We as a species are too attached to the limitations of computer hardware. For some reason programming is still chained to concepts such as bits and bytes and obscure things which have little meaning to anything else in the world. If I want to program, I don't care about what hardware I have! I just want my instructions to be followed.  
-Java is not a solution to this at all. Don't program in Java.  
-Software should be written in a more mathmatical manner.. not with strange symbols I might add! But with the abstraction and elegance.
-You should not write any programs in UCT but you should accept it as the future assembly language which will empower the people of humanity.  
-There is a core principle of Universal Assembly:
+## Philosophy
 
 **Hardware Agnostic**
 Universal Assembly does not care about the hardware it runs on, it could be running on a fridge, a toaster.. nearly anything in your kitchen.  
@@ -66,50 +58,20 @@ These are the official supported lanuages for development and testing.
 
 | Language |  I/O  | Networking | Threading |
 |----------|-------|------------|-----------|
-|Go		   |  YES  |    YES     |    YES    |
-|Java	   |  YES  |    YES     |    YES    |
-|Python	   |  YES  |    YES     |    YES    |
-|Rust      |  SOME |    NO      |    NO     |
-|Javascript|  NO   |    NO      |    YES    |
-|Arduino   |  NO   |    NO      |    NO     |
-|C++       |  NO   |    NO      |    NO     |
-|Bash	   |  NO   |    NO      |    NO     |
+|Go		   |  NO   |    NO      |    SOME    |
+|Python	   |  NO   |    NO      |    NO     |
+
 
 These targets are currently not enabled, they have been in the past and will be added again in a future release.
 
 | Language |  I/O  | Networking | Threading |
 |----------|-------|------------|-----------|
+|Java	   |  YES  |    YES     |    YES    |
+|Rust      |  SOME |    NO      |    NO     |
+|Javascript|  NO   |    NO      |    YES    |
+|Arduino   |  NO   |    NO      |    NO     |
+|C++       |  NO   |    NO      |    NO     |
+|Bash	   |  NO   |    NO      |    NO     |
 |Ruby	   |  SOME |     NO     |    NO     |
 |C#		   |  SOME |     NO     |    NO     |
 |Lua       |  SOME |     NO     |    NO     |
-
-# Install
-
-```bash
-#Make sure $GOPATH/bin is in $PATH then:
-go get github.com/qlova/uct
-```
-
-# Using
-
-```bash
-		uct -ext input.u
-		#eg for go:
-		uct -go input.u
-
-		#you will then find a file (input.go)
-		#Which you can compile with your favourite go compiler.
-```
-
-
-# Hello World
-```u
-		DATA helloworld "Hello World\n"
-
-		# Prints "Hello World"
-		SOFTWARE
-			SHARE helloworld
-			STDOUT
-		EXIT
-```
-
