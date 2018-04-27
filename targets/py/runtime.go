@@ -9,6 +9,27 @@ import os
 import sys
 import collections
 
+class Empty:
+	name = ""
+	file = None
+	
+	def __init__(self, name):
+		self.name = name
+		
+	def write(self, data):
+		if self.file == None:
+			if self.name[-1] == "/":
+				os.makedirs(self.name)
+			else:
+				self.file = open(self.name, "wb")
+			if len(data) > 0:
+				return False
+			else:
+				return True
+
+		return file.write(data)
+		
+
 class Std:
 	def write(self, bytes):
 		sys.stdout.buffer.write(bytes)
@@ -87,10 +108,15 @@ class Runtime:
 		pipe = self.Pipes.pop()
 		bytes = self.Lists.pop()
 
-		if not pipe.write(bytearray(bytes)):
-			if pipe.function:
-				pipe.function(runtime)
-				return
+		try:
+			if not pipe.write(bytearray(bytes)):
+				if hasattr(pipe, "function"):
+					pipe.function(runtime)
+					return
+				self.Error = 1
+		except PermissionError:
+			self.Error = 13
+		except:
 			self.Error = 1
 			
 	def read(self):
@@ -111,13 +137,16 @@ class Runtime:
 			self.Lists.append(text)
 	
 	def open(self):
-		uri = self.Lists.pop()
+		uri = bytearray(self.Lists.pop()).decode("utf8")
 		if len(uri) == 0:
 			self.Pipes.append(Std())
 			return
 		
-		self.Error = 1
-		self.Pipes.append(None) #Should return an empty pipe!
+		if os.path.isfile(uri) or os.path.isdir(uri):
+			self.Pipes.append(Empty(uri))
+		else:
+			self.Error = 2
+			self.Pipes.append(Empty(uri))
 	
 	def load(self):
 		name = ""

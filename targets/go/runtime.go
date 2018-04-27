@@ -364,8 +364,24 @@ func (runtime *Runtime) Open() {
 		runtime.Pipes = append(runtime.Pipes, StdPipe{})
 		
 	} else {
-		runtime.Error.Small = 1
-		runtime.Error.SetBits(nil)
+		
+		var _, err = os.Stat(string(uri.Bytes))
+		
+		runtime.Pipes = append(runtime.Pipes, &WrappedFile{Exists: !os.IsNotExist(err), Path: string(uri.Bytes)})
+		
+		if err == nil {
+			return
+		}
+		
+		if os.IsNotExist(err) {
+			runtime.Error.Small = 2
+			runtime.Error.SetBits(nil)
+		} else {
+			
+			runtime.Pipes = append(runtime.Pipes, &WrappedFunction{Function: func(*Runtime) {}})
+			runtime.Error.Small = 1
+			runtime.Error.SetBits(nil)
+		}
 	}
 }
 
@@ -621,6 +637,56 @@ func (wrapped *WrappedFunction) Info(data List) (List) {
 	} else {
 		wrapped.Data = data
 	}
+	return List{}
+}
+
+type WrappedFile struct {
+	Path string
+	File *os.File
+	Exists bool
+}
+
+func (WrappedFile) Init() {}
+
+func (wrapped *WrappedFile) Read(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (wrapped *WrappedFile) Write(p []byte) (n int, err error) {
+
+	if wrapped.File == nil {
+		if wrapped.Exists {
+			wrapped.File, err = os.OpenFile(wrapped.Path, os.O_RDWR|os.O_APPEND, 0666)
+		} else {
+			//Directory?
+			if wrapped.Path[len(wrapped.Path)-1] == '/' {
+				err = os.MkdirAll(wrapped.Path, 0755)
+			} else {
+				wrapped.File, err = os.Create(wrapped.Path)
+			}
+		}
+		
+		if err != nil {
+			return 0, err
+		}
+	}
+	
+	if len(p) > 0 {
+		
+	}
+
+	return 0, err
+}
+
+func (wrapped *WrappedFile) Seek(offset int64, whence int) (int64, error) {
+	return 0, nil
+}
+
+func (wrapped *WrappedFile) Close() (error) {
+	return nil
+}
+
+func (wrapped *WrappedFile) Info(data List) (List) {
 	return List{}
 }
 
