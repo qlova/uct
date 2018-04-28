@@ -11,9 +11,9 @@ func (c *Compiler) Shunt(t Type, precedence int) Type {
 		op := c.GetOperator(peek)
 		c.Scan()
 
-		rhs := c.scanExpression()
+		rhs := c.Expression()
 		peek = c.Peek()
-		for c.GetOperator(peek).Precedence >= op.Precedence {
+		for c.GetOperator(peek).Precedence > op.Precedence {
 			rhs = c.Shunt(rhs, c.GetOperator(peek).Precedence)
 			peek = c.Peek()
 		}
@@ -29,7 +29,7 @@ func (c *Compiler) Shunt(t Type, precedence int) Type {
 			t = shunt(c, rhs)
 		} else {
 			c.RaiseError(Translatable{
-				English: "Operator "+op.Symbol+" does not apply to "+t.Name[English], 
+				English: "Operator "+op.Symbol+" does not apply to "+t.String(), 
 			})
 		}
 	}
