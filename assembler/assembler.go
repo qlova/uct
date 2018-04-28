@@ -172,19 +172,13 @@ func (assembler *Assembler) ReadString() (string, error) {
 		return "", err
 	}
 	
-	var result = ""
-	
-	var buffer [2]byte
-	for i:=0; i < int(length.Int64()); i++ {
-		_, err := assembler.Input[len(assembler.Input)-1].Read(buffer[:])
-		if err != nil {
-			return "", err
-		}
-		
-		result += string(rune(buffer[1]))
+	var buffer = make([]byte, length.Int64())
+	_, err = assembler.Input[len(assembler.Input)-1].Read(buffer[:])
+	if err != nil {
+		return "", err
 	}
 	
-	return result, nil
+	return string(buffer), nil
 }
 
 func (assembler *Assembler) ReadInt() (big.Int, error) {

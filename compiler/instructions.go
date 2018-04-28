@@ -32,7 +32,7 @@ func WriteString(output io.Writer, data string) {
 	//Will this ever happen though?? na!
 	
 	for _, char := range []byte(data) {
-		output.Write([]byte{1, char})	
+		output.Write([]byte{char})	
 	}
 }
 
