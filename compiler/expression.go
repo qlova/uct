@@ -7,7 +7,7 @@ type Expression struct {
 	Detect func(*Compiler) *Type
 }
 
-func (c *Compiler) scanExpression() Type {
+func (c *Compiler) Expression() Type {
 	var token = c.Scan()
 	
 	for _, expression := range c.Expressions {
@@ -28,8 +28,9 @@ func (c *Compiler) scanExpression() Type {
 	return Type{Name: NoTranslation(c.Token()), Fake: true}
 }
 
+
 func (c *Compiler) ScanExpression() Type {
-	var result = c.Shunt(c.scanExpression(), 0)
+	var result = c.Shunt(c.Expression(), 0)
 	
 	if result.Fake {
 		c.RaiseError(Translatable{
