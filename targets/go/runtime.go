@@ -7,6 +7,7 @@ var Runtime = uct.Runtime{
 	Data: `
 import "math/big"
 import "io"
+import "io/ioutil"
 import "os"
 import "bufio"
 import "strconv"
@@ -177,7 +178,10 @@ func (runtime *Runtime) Mod() {
 	if ca, cb := a.Int.Bits() == nil, b.Int.Bits() == nil; ca || cb {
 		if ca && cb {
 			
-			runtime.Stack = append(runtime.Stack, Int{Small:a.Small%b.Small})
+			//TODO fix overflow
+			var result = ((a.Small%b.Small) + b.Small) % b.Small
+			
+			runtime.Stack = append(runtime.Stack, Int{Small:result})
 
 		} else if !ca {
 			
@@ -428,6 +432,19 @@ func (runtime *Runtime) Load() {
 		} else {
 			runtime.Error = Int{Small: 1}
 		}
+	} else {
+		
+		if _, err := os.Stat(string(uri.Bytes)); err == nil {
+			var err error
+			result.Bytes, err = ioutil.ReadFile(string(uri.Bytes))
+			runtime.Lists = append(runtime.Lists, result)
+			if err != nil {
+				runtime.Error = Int{Small: 1}
+				runtime.Error.SetBits(nil)
+			}
+			return
+		}
+		
 	}
 	
 	
@@ -672,7 +689,7 @@ func (wrapped *WrappedFile) Write(p []byte) (n int, err error) {
 	}
 	
 	if len(p) > 0 {
-		
+		return wrapped.File.Write(p)
 	}
 
 	return 0, err

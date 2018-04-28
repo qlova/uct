@@ -21,13 +21,9 @@ class Empty:
 			if self.name[-1] == "/":
 				os.makedirs(self.name)
 			else:
-				self.file = open(self.name, "wb")
-			if len(data) > 0:
-				return False
-			else:
-				return True
+				self.file = open(self.name, "ba+")
 
-		return file.write(data)
+		return self.file.write(data)
 		
 
 class Std:
@@ -77,8 +73,12 @@ class Runtime:
 			else:
 				runtime.Stack.append(0)
 				return
-		
-		runtime.Stack.append(a//b)
+				
+		d, r = divmod(a, b)
+			
+		if r != 0 and b < 0:
+			d += 1
+		runtime.Stack.append(d)
 	
 	def div(self):
 		b = self.Stack.pop()
@@ -158,6 +158,14 @@ class Runtime:
 			uri.pop(0)
 			name = uri.decode("utf8")
 			variable = os.environ[name]
+		elif len(uri) > 0:
+			try:
+				file = open(uri.decode("utf8"), "rb")
+				self.Lists.append(file.read())
+				file.close()
+				return
+			except:
+				self.Error = 1
 		
 		self.Lists.append(bytearray(variable, "utf8"))
 		
