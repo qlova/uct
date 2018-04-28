@@ -42,6 +42,12 @@ func (runtime *Runtime) Pull() Int {
 	return result
 }
 
+func (runtime *Runtime) PullList() *List {
+	var result = runtime.Lists[len(runtime.Lists)-1]
+	runtime.Lists = runtime.Lists[:len(runtime.Lists)-1]
+	return result
+}
+
 func (runtime *Runtime) Sub() {
 	runtime.Stack[len(runtime.Stack)-1] = runtime.Stack[len(runtime.Stack)-1].Flip()
 	runtime.Add()
