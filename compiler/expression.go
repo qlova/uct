@@ -9,6 +9,9 @@ type Expression struct {
 
 func (c *Compiler) Expression() Type {
 	var token = c.Scan()
+	for token == "\n" {
+		token = c.Scan()
+	}
 	
 	for _, expression := range c.Expressions {
 		if expression.Name[c.Language] == token {
