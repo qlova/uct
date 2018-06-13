@@ -15,7 +15,7 @@ import "errors"
 	
 type Runtime struct {
 	Error Int
-	Global List
+	Global *List
 	Channel Pipe
 
 	//Stack
@@ -505,7 +505,13 @@ func (runtime *Runtime) Read() {
 			for {
 				var b [1]byte
 				
-				pipe.Read(b[:])
+				_, err := pipe.Read(b[:])
+				if err != nil {
+					runtime.Error.Small = 1
+					runtime.Error.SetBits(nil)
+					runtime.Lists = append(runtime.Lists, l)
+					break
+				}
 				
 				if b[0] == byte(-size.Small) {
 					runtime.Lists = append(runtime.Lists, l)
@@ -533,7 +539,7 @@ func (runtime *Runtime) HeapList() {
 				runtime.TheListHeapRoom = runtime.TheListHeapRoom[:len(runtime.TheListHeapRoom)-1]
 				
 				runtime.TheListHeap[address] = list
-				runtime.Stack = append(runtime.Stack, Int{Small:int64(address-1)})
+				runtime.Stack = append(runtime.Stack, Int{Small:int64(address+1)})
 				
 			} else {
 				runtime.TheListHeap = append(runtime.TheListHeap, list)

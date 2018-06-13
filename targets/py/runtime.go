@@ -46,7 +46,7 @@ class WrappedFunction:
 class Runtime:
 	def __init__(self):
 		self.Error = 0
-		self.Global = 0
+		self.Global = []
 		self.Channel = None
 		
 		self.Stack = collections.deque()
@@ -129,11 +129,14 @@ class Runtime:
 			self.Lists.append(pipe.read(size))
 		else:
 			text = []
-			while 1:
-				text += pipe.read(1)
-				if text[-1] == -size:
-					text = text[:-1]
-					break
+			try:
+				while 1:
+					text += pipe.read(1)
+					if text[-1] == -size:
+						text = text[:-1]
+						break
+			except:
+				self.Error = 1
 			self.Lists.append(text)
 	
 	def open(self):
@@ -142,10 +145,15 @@ class Runtime:
 			self.Pipes.append(Std())
 			return
 		
-		if os.path.isfile(uri) or os.path.isdir(uri):
-			self.Pipes.append(Empty(uri))
-		else:
-			self.Error = 2
+		try:
+			if os.path.isfile(uri) or os.path.isdir(uri):
+				self.Pipes.append(Empty(uri))
+			else:
+				self.Error = 2
+				self.Pipes.append(Empty(uri))
+		except:
+			#Stupid unicode errors..
+			self.Error = 1
 			self.Pipes.append(Empty(uri))
 	
 	def load(self):

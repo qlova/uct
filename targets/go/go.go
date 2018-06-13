@@ -15,6 +15,10 @@ func init() {
 				uc.String = "runtime.Error"
 			}
 			
+			if uc.String == "GLOBAL" {
+				uc.String = "runtime.Global"
+			}
+			
 			switch uc.Instruction {
 				case uct.MAIN:
 					uc.WriteLine("func main() {")
@@ -24,7 +28,7 @@ func init() {
 
 				case uct.EXIT:
 					if uc.Indentation() > 1 {
-						uc.WriteLine("os.Exit(runtime.Error)")
+						uc.WriteLine("os.Exit(int(runtime.Error.Small))")
 					} else {
 						uc.DecreaseIndentation()
 						uc.WriteLine("Stdout.Flush()}")
