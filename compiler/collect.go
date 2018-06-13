@@ -8,9 +8,9 @@ func (c *Compiler) CollectAll() {
 				
 				if variable.Type.Collect != nil {
 					variable.Type.Collect(c)
+				} else {
+					c.FreeType(variable.Type)
 				}
-				
-				c.FreeType(variable.Type)
 			}
 		}
 	}
