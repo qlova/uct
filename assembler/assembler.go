@@ -17,6 +17,8 @@ type Assembler struct {
 	Input []io.ReadCloser
 	Output io.Writer
 	Runtime io.Writer
+	
+	disable_output bool
 }
 
 type Target struct {
@@ -202,7 +204,19 @@ func (assembler *Assembler) ReadInt() (big.Int, error) {
 	return result, nil
 }
 
+func (assembler *Assembler) DisableOutput() {
+	assembler.disable_output = true
+}
+
+func (assembler *Assembler) EnableOutput() {
+	assembler.disable_output = false
+}
+
 func (assembler *Assembler) WriteString(data string) error {
+	if assembler.disable_output {
+		return nil
+	}
+	
 	for i := 0; i < assembler.indentation; i++ {
 		_, err := assembler.Output.Write([]byte{'\t'})
 		if err != nil {
@@ -219,6 +233,10 @@ func (assembler *Assembler) WriteString(data string) error {
 
 
 func (assembler *Assembler) WriteLine(data string) error {
+	if assembler.disable_output {
+		return nil
+	}
+	
 	if err := assembler.WriteString(data); err != nil {
 		return err
 	}
