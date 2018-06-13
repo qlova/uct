@@ -13,6 +13,7 @@ type Compiler struct {
 	
 	Language Language
 	
+	GlobalScope Scope
 	Scope []Scope
 	
 	Header io.Writer
@@ -119,6 +120,10 @@ func (c *Compiler) AddInput(input io.Reader) {
 }
 
 func (c *Compiler) Compile() {
+	
+	if c.GlobalScope.Variables == nil {
+		c.GlobalScope = NewScope()
+	}
 	
 	defer func() {
         if r := recover(); r != nil {
