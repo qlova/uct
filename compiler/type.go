@@ -65,9 +65,11 @@ func (d DefaultBase) Attach(c *Compiler) {
 		case LIST:
 			c.Int(0)
 			c.HeapList()
+			c.Set()
 		case PIPE:
 			c.Int(0)
 			c.HeapPipe()
+			c.Set()
 		case NULL:
 		default:
 			panic("Invalid default base!")
