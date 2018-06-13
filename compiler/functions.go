@@ -8,6 +8,8 @@ type Function struct {
 	
 	Returns []Type
 	
+	Flags []Flag
+	
 	Inline func(*Compiler)
 	Compile func(*Compiler)
 	
