@@ -5,6 +5,8 @@ import "strings"
 import "runtime"
 
 func (c *Compiler) RaiseError(message Translatable) {
+	c.Language = English
+	
 	fmt.Fprint(c.StdErr[len(c.StdErr)-1], c.Scanners[len(c.Scanners)-1].Line+c.LineOffset, ": ")
 	var x = c.Scanners[len(c.Scanners)-1].Column+1
 	
