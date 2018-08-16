@@ -135,6 +135,13 @@ func (t Type) String() string {
 
 func (t Type) Equals(b Type) bool {
 	if t.Name[English] == b.Name[English] {
+		
+		if t.Data != nil && b.Data != nil {
+			if !t.Data.Equals(b.Data) {
+				return false
+			}
+		}
+		
 		return true
 	}
 	return false
